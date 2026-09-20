@@ -7,7 +7,7 @@ import ArticleDetail from '@/components/ArticleDetail';
 import Sidebar from '@/components/Sidebar';
 import Footer from '@/components/Footer';
 import AdminPanel from '@/components/AdminPanel';
-import { supabase, type Article } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase, type Article } from '@/lib/supabase';
 import { CATEGORIES } from '@/lib/categories';
 
 type View =
@@ -26,15 +26,30 @@ export default function App() {
   const fetchArticles = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { data, error } = await supabase
+
+    if (!isSupabaseConfigured) {
+      setError('Falta configurar Supabase. Añade VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en un archivo .env.local.');
+      setLoading(false);
+      return;
+    }
+
+    let result = await supabase
       .from('articles')
       .select('*')
+      .eq('status', 'published')
       .order('published_at', { ascending: false });
 
-    if (error) {
+    if (result.error?.code === '42703') {
+      result = await supabase
+        .from('articles')
+        .select('*')
+        .order('published_at', { ascending: false });
+    }
+
+    if (result.error) {
       setError('No pudimos cargar las noticias. Inténtalo de nuevo en un momento.');
     } else {
-      setArticles(data ?? []);
+      setArticles((result.data ?? []).map((article) => ({ ...article, status: article.status ?? 'published' })));
     }
     setLoading(false);
   }, []);

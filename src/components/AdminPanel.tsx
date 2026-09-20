@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, X, Save, Loader2, ArrowLeft, Star, Upload } from 'lucide-react';
-import { supabase, type Article } from '@/lib/supabase';
+import { Plus, Pencil, Trash2, X, Save, Loader2, ArrowLeft, Star, Upload, LogOut, LockKeyhole } from 'lucide-react';
+import { supabase, type Article, type Session } from '@/lib/supabase';
 import { CATEGORIES } from '@/lib/categories';
 import BloggerImport from '@/components/BloggerImport';
 
@@ -17,6 +17,7 @@ type FormData = {
   author: string;
   image_url: string;
   featured: boolean;
+  status: 'draft' | 'published';
 };
 
 const EMPTY_FORM: FormData = {
@@ -28,6 +29,7 @@ const EMPTY_FORM: FormData = {
   author: '',
   image_url: '',
   featured: false,
+  status: 'draft',
 };
 
 function slugify(text: string): string {
@@ -51,6 +53,12 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [loggingIn, setLoggingIn] = useState(false);
 
   const fetchArticles = async () => {
     setLoading(true);
@@ -68,8 +76,40 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   };
 
   useEffect(() => {
-    fetchArticles();
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setSession(data.session);
+      setAuthLoading(false);
+      if (data.session) fetchArticles();
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      if (nextSession) fetchArticles();
+      else setArticles([]);
+    });
+
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
   }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setLoggingIn(true);
+
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) setAuthError('No se pudo iniciar sesión. Revisa tu correo y contraseña.');
+    setLoggingIn(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   const openNewForm = () => {
     setForm(EMPTY_FORM);
@@ -88,6 +128,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       author: article.author,
       image_url: article.image_url,
       featured: article.featured,
+      status: article.status,
     });
     setEditingId(article.id);
     setFormError(null);
@@ -131,6 +172,8 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           author: form.author.trim(),
           image_url: form.image_url.trim(),
           featured: form.featured,
+          status: form.status,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', editingId);
 
@@ -152,6 +195,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           author: form.author.trim(),
           image_url: form.image_url.trim(),
           featured: form.featured,
+          status: form.status,
         });
 
       if (error) {
@@ -177,6 +221,61 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-white border border-stone-200 rounded-2xl shadow-xl p-8">
+          <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-5">
+            <LockKeyhole size={24} />
+          </div>
+          <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 mb-2">Viento Sur</p>
+          <h1 className="font-serif text-2xl font-bold text-stone-900 mb-2">Acceso editorial</h1>
+          <p className="text-sm text-stone-500 mb-6">Inicia sesión para gestionar las noticias del sitio.</p>
+          {authError && <p className="px-3 py-2 mb-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">{authError}</p>}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Correo electrónico</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Contraseña</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loggingIn}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+            >
+              {loggingIn && <Loader2 size={16} className="animate-spin" />}
+              Entrar al panel
+            </button>
+          </form>
+          <button onClick={onBack} className="w-full mt-4 text-sm text-stone-500 hover:text-emerald-700">Volver al sitio público</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-stone-50">
       {/* Admin header */}
@@ -193,6 +292,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             <h1 className="font-serif text-xl font-bold">Panel de Administración</h1>
           </div>
           <div className="flex items-center gap-2">
+            <span className="hidden sm:inline text-xs text-stone-400 mr-2">{session.user.email}</span>
             <button
               onClick={() => setShowImport(true)}
               className="flex items-center gap-2 px-4 py-2 bg-stone-700 hover:bg-stone-600 rounded-lg text-sm font-semibold transition-colors"
@@ -206,6 +306,14 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             >
               <Plus size={18} />
               Nueva noticia
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-2 text-stone-300 hover:text-white hover:bg-stone-800 rounded-lg transition-colors"
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+            >
+              <LogOut size={18} />
             </button>
           </div>
         </div>
@@ -251,6 +359,9 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                           Destacada
                         </span>
                       )}
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${article.status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {article.status === 'published' ? 'Publicado' : 'Borrador'}
+                      </span>
                     </div>
                     <h3 className="font-serif text-sm font-bold text-stone-900 line-clamp-1">
                       {article.title}
@@ -396,6 +507,18 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                   className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
                   placeholder="url-de-la-noticia"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Estado editorial</label>
+                <select
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value as 'draft' | 'published' })}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500 bg-white"
+                >
+                  <option value="draft">Guardar como borrador</option>
+                  <option value="published">Publicar ahora</option>
+                </select>
               </div>
 
               <label className="flex items-center gap-2 cursor-pointer">

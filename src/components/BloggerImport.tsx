@@ -176,9 +176,7 @@ export default function BloggerImport({ onClose, onImported }: BloggerImportProp
 
     const { error: insertError } = await supabase
       .from('articles')
-      .insert(rows)
-      .onConflict('slug')
-      .ignore();
+      .upsert(rows, { onConflict: 'slug', ignoreDuplicates: true });
 
     if (insertError) {
       setError('No se pudo completar la importación. Verifica tu conexión e inténtalo de nuevo.');

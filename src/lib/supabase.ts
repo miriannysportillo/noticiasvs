@@ -27,3 +27,18 @@ export type Article = {
   created_at: string;
   updated_at: string;
 };
+
+export type Author = {
+  id: string;
+  name: string;
+  role: string;
+  bio: string;
+  avatar: string;
+  social_links: Array<{
+    label: string;
+    url: string;
+    platform: 'x' | 'linkedin' | 'instagram' | 'youtube' | 'web';
+  }>;
+  created_at: string;
+  updated_at: string;
+};

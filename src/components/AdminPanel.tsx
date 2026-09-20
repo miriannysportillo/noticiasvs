@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, Save, Loader2, ArrowLeft, Star, Upload, LogOut, LockKeyhole } from 'lucide-react';
-import { supabase, type Article, type Session } from '@/lib/supabase';
+import { supabase, type Article, type Author, type Session } from '@/lib/supabase';
 import { CATEGORIES } from '@/lib/categories';
 import BloggerImport from '@/components/BloggerImport';
 
@@ -20,6 +20,14 @@ type FormData = {
   status: 'draft' | 'published';
 };
 
+type AuthorFormData = {
+  name: string;
+  role: string;
+  bio: string;
+  avatar: string;
+  socialLinks: string;
+};
+
 const EMPTY_FORM: FormData = {
   title: '',
   slug: '',
@@ -30,6 +38,14 @@ const EMPTY_FORM: FormData = {
   image_url: '',
   featured: false,
   status: 'draft',
+};
+
+const EMPTY_AUTHOR_FORM: AuthorFormData = {
+  name: '',
+  role: 'Columnista',
+  bio: '',
+  avatar: '',
+  socialLinks: '',
 };
 
 function slugify(text: string): string {
@@ -45,6 +61,7 @@ function slugify(text: string): string {
 
 export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [articles, setArticles] = useState<Article[]>([]);
+  const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -59,6 +76,11 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [showAuthorForm, setShowAuthorForm] = useState(false);
+  const [editingAuthorId, setEditingAuthorId] = useState<string | null>(null);
+  const [authorForm, setAuthorForm] = useState<AuthorFormData>(EMPTY_AUTHOR_FORM);
+  const [authorError, setAuthorError] = useState<string | null>(null);
+  const [savingAuthor, setSavingAuthor] = useState(false);
 
   const fetchArticles = async () => {
     setLoading(true);
@@ -75,6 +97,11 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     setLoading(false);
   };
 
+  const fetchAuthors = async () => {
+    const { data } = await supabase.from('authors').select('*').order('name');
+    setAuthors((data as Author[] | null) ?? []);
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -82,12 +109,18 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       if (!mounted) return;
       setSession(data.session);
       setAuthLoading(false);
-      if (data.session) fetchArticles();
+      if (data.session) {
+        fetchArticles();
+        fetchAuthors();
+      }
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
-      if (nextSession) fetchArticles();
+      if (nextSession) {
+        fetchArticles();
+        fetchAuthors();
+      }
       else setArticles([]);
     });
 
@@ -109,6 +142,68 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+  const openNewAuthorForm = () => {
+    setAuthorForm(EMPTY_AUTHOR_FORM);
+    setEditingAuthorId(null);
+    setAuthorError(null);
+    setShowAuthorForm(true);
+  };
+
+  const openEditAuthorForm = (author: Author) => {
+    setAuthorForm({
+      name: author.name,
+      role: author.role,
+      bio: author.bio,
+      avatar: author.avatar,
+      socialLinks: author.social_links.map((link) => `${link.label}|${link.url}|${link.platform}`).join('\n'),
+    });
+    setEditingAuthorId(author.id);
+    setAuthorError(null);
+    setShowAuthorForm(true);
+  };
+
+  const closeAuthorForm = () => {
+    setShowAuthorForm(false);
+    setEditingAuthorId(null);
+    setAuthorForm(EMPTY_AUTHOR_FORM);
+    setAuthorError(null);
+  };
+
+  const handleSaveAuthor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthorError(null);
+    if (!authorForm.name.trim() || !authorForm.role.trim() || !authorForm.bio.trim()) {
+      setAuthorError('Nombre, rol y biografía son obligatorios.');
+      return;
+    }
+
+    const socialLinks = authorForm.socialLinks
+      .split('\n')
+      .map((line) => line.trim().split('|'))
+      .filter((parts) => parts.length === 3 && parts[0] && parts[1] && ['x', 'linkedin', 'instagram', 'youtube', 'web'].includes(parts[2]))
+      .map(([label, url, platform]) => ({ label, url, platform }));
+    const payload = {
+      name: authorForm.name.trim(),
+      role: authorForm.role.trim(),
+      bio: authorForm.bio.trim(),
+      avatar: authorForm.avatar.trim() || authorForm.name.trim().slice(0, 2).toUpperCase(),
+      social_links: socialLinks,
+      updated_at: new Date().toISOString(),
+    };
+
+    setSavingAuthor(true);
+    const result = editingAuthorId
+      ? await supabase.from('authors').update(payload).eq('id', editingAuthorId)
+      : await supabase.from('authors').insert(payload);
+    if (result.error) {
+      setAuthorError('No se pudo guardar el autor. Verifica que el nombre no esté repetido.');
+    } else {
+      closeAuthorForm();
+      fetchAuthors();
+    }
+    setSavingAuthor(false);
   };
 
   const openNewForm = () => {
@@ -294,6 +389,13 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline text-xs text-stone-400 mr-2">{session.user.email}</span>
             <button
+              onClick={openNewAuthorForm}
+              className="flex items-center gap-2 px-4 py-2 bg-stone-700 hover:bg-stone-600 rounded-lg text-sm font-semibold transition-colors"
+            >
+              <Pencil size={18} />
+              Autores
+            </button>
+            <button
               onClick={() => setShowImport(true)}
               className="flex items-center gap-2 px-4 py-2 bg-stone-700 hover:bg-stone-600 rounded-lg text-sm font-semibold transition-colors"
             >
@@ -339,6 +441,29 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             <p className="text-sm text-stone-500 mb-4">
               {articles.length} artículo{articles.length !== 1 ? 's' : ''} en total
             </p>
+            {authors.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-serif text-lg font-bold text-stone-900">Autores</h2>
+                  <span className="text-xs text-stone-500">{authors.length} perfil{authors.length !== 1 ? 'es' : ''}</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {authors.map((author) => (
+                    <button
+                      key={author.id}
+                      type="button"
+                      onClick={() => openEditAuthorForm(author)}
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-stone-200 rounded-lg text-sm text-stone-700 hover:border-emerald-500 hover:text-emerald-700 transition-colors"
+                    >
+                      <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold">
+                        {author.avatar || author.name.slice(0, 2).toUpperCase()}
+                      </span>
+                      {author.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-3">
               {articles.map((article) => (
                 <div
@@ -561,6 +686,54 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           onClose={() => setShowImport(false)}
           onImported={fetchArticles}
         />
+      )}
+
+      {showAuthorForm && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 overflow-y-auto p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
+              <h2 className="font-serif text-lg font-bold text-stone-900">
+                {editingAuthorId ? 'Editar autor' : 'Nuevo autor'}
+              </h2>
+              <button onClick={closeAuthorForm} className="p-2 text-stone-500 hover:text-stone-700 rounded-lg" aria-label="Cerrar">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveAuthor} className="px-6 py-5 space-y-4">
+              {authorError && <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{authorError}</div>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">Nombre *</label>
+                  <input value={authorForm.name} onChange={(e) => setAuthorForm({ ...authorForm, name: e.target.value })} className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">Rol *</label>
+                  <input value={authorForm.role} onChange={(e) => setAuthorForm({ ...authorForm, role: e.target.value })} className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm" required />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Biografía *</label>
+                <textarea value={authorForm.bio} onChange={(e) => setAuthorForm({ ...authorForm, bio: e.target.value })} rows={4} className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm resize-y" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Iniciales del avatar</label>
+                <input value={authorForm.avatar} onChange={(e) => setAuthorForm({ ...authorForm, avatar: e.target.value })} maxLength={4} className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm" placeholder="MG" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Redes sociales</label>
+                <textarea value={authorForm.socialLinks} onChange={(e) => setAuthorForm({ ...authorForm, socialLinks: e.target.value })} rows={3} className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm resize-y" placeholder="X|https://x.com/usuario|x" />
+                <p className="text-xs text-stone-500 mt-1">Una por línea: etiqueta|URL|plataforma. Plataformas: x, linkedin, instagram, youtube o web.</p>
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-stone-200">
+                <button type="button" onClick={closeAuthorForm} className="px-4 py-2 text-sm text-stone-600 hover:bg-stone-100 rounded-lg">Cancelar</button>
+                <button type="submit" disabled={savingAuthor} className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
+                  {savingAuthor ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  Guardar autor
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

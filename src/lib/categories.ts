@@ -5,6 +5,7 @@ export const CATEGORIES = [
   'Economía',
   'Cultura',
   'Medio Ambiente',
+  'Opinión',
 ] as const;
 
 export const CATEGORY_SLUGS: Record<string, string> = {
@@ -14,6 +15,7 @@ export const CATEGORY_SLUGS: Record<string, string> = {
   'Economía': 'economia',
   'Cultura': 'cultura',
   'Medio Ambiente': 'medio-ambiente',
+  'Opinión': 'opinion',
 };
 
 export const SLUG_TO_CATEGORY: Record<string, string> = Object.entries(CATEGORY_SLUGS).reduce(

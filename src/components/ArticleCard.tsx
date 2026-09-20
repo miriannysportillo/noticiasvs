@@ -5,10 +5,11 @@ import { formatRelative } from '@/lib/utils';
 type ArticleCardProps = {
   article: Article;
   onClick: (article: Article) => void;
+  onAuthorClick?: (authorName: string) => void;
   variant?: 'default' | 'compact';
 };
 
-export default function ArticleCard({ article, onClick, variant = 'default' }: ArticleCardProps) {
+export default function ArticleCard({ article, onClick, onAuthorClick, variant = 'default' }: ArticleCardProps) {
   if (variant === 'compact') {
     return (
       <button
@@ -60,8 +61,17 @@ export default function ArticleCard({ article, onClick, variant = 'default' }: A
         <p className="text-sm text-stone-600 mt-2 line-clamp-2 flex-1">
           {article.excerpt}
         </p>
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-stone-100">
-          <span className="text-xs font-medium text-stone-700">{article.author}</span>
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-stone-100 gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAuthorClick?.(article.author);
+            }}
+            className="text-xs font-medium text-stone-700 hover:text-emerald-700 transition-colors"
+          >
+            {article.author}
+          </button>
           <span className="text-xs text-stone-500 flex items-center gap-1">
             <Clock size={12} />
             {formatRelative(article.published_at)}

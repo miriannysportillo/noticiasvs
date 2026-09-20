@@ -7,18 +7,22 @@ import ArticleDetail from '@/components/ArticleDetail';
 import Sidebar from '@/components/Sidebar';
 import Footer from '@/components/Footer';
 import AdminPanel from '@/components/AdminPanel';
-import { isSupabaseConfigured, supabase, type Article } from '@/lib/supabase';
+import AuthorProfile from '@/components/AuthorProfile';
+import { isSupabaseConfigured, supabase, type Article, type Author } from '@/lib/supabase';
 import { CATEGORIES } from '@/lib/categories';
+import { mapAuthorProfile, type AuthorProfile as AuthorProfileData } from '@/lib/authors';
 
 type View =
   | { type: 'home' }
   | { type: 'category'; category: string }
   | { type: 'article'; article: Article }
+  | { type: 'author'; authorName: string }
   | { type: 'search'; query: string }
   | { type: 'admin' };
 
 export default function App() {
   const [articles, setArticles] = useState<Article[]>([]);
+  const [authors, setAuthors] = useState<Record<string, AuthorProfileData>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>({ type: 'home' });
@@ -56,6 +60,17 @@ export default function App() {
 
   useEffect(() => {
     fetchArticles();
+    supabase
+      .from('authors')
+      .select('*')
+      .order('name')
+      .then(({ data }) => {
+        const authorMap = (data as Author[] | null ?? []).reduce<Record<string, AuthorProfileData>>((map, author) => {
+          map[author.name] = mapAuthorProfile(author);
+          return map;
+        }, {});
+        setAuthors(authorMap);
+      });
   }, [fetchArticles]);
 
   useEffect(() => {
@@ -65,6 +80,7 @@ export default function App() {
   const handleNavigateHome = () => setView({ type: 'home' });
   const handleNavigateCategory = (category: string) => setView({ type: 'category', category });
   const handleArticleClick = (article: Article) => setView({ type: 'article', article });
+  const handleAuthorClick = (authorName: string) => setView({ type: 'author', authorName });
   const handleSearch = (query: string) => setView({ type: 'search', query });
   const handleNavigateAdmin = () => setView({ type: 'admin' });
 
@@ -125,6 +141,21 @@ export default function App() {
           related={getRelated(view.article)}
           onBack={handleNavigateHome}
           onArticleClick={handleArticleClick}
+          onAuthorClick={handleAuthorClick}
+          authorProfile={authors[view.article.author]}
+        />
+      );
+    }
+
+    if (view.type === 'author') {
+      const authorArticles = articles.filter((article) => article.author === view.authorName);
+      return (
+        <AuthorProfile
+          authorName={view.authorName}
+          articles={authorArticles}
+          onBack={handleNavigateHome}
+          onArticleClick={handleArticleClick}
+          profile={authors[view.authorName]}
         />
       );
     }
@@ -160,7 +191,12 @@ export default function App() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   {filtered.map((article) => (
-                    <ArticleCard key={article.id} article={article} onClick={handleArticleClick} />
+                    <ArticleCard
+                      key={article.id}
+                      article={article}
+                      onClick={handleArticleClick}
+                      onAuthorClick={handleAuthorClick}
+                    />
                   ))}
                 </div>
               )}
@@ -191,7 +227,7 @@ export default function App() {
       />
 
       {/* Breaking news ticker */}
-      {!loading && articles.length > 0 && view.type !== 'article' && (
+      {!loading && articles.length > 0 && view.type !== 'article' && view.type !== 'author' && (
         <div className="bg-emerald-600 text-white py-2 overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 flex items-center gap-3">
             <span className="text-xs font-bold uppercase tracking-wider bg-white text-emerald-700 px-2 py-0.5 rounded flex-shrink-0">
@@ -214,7 +250,7 @@ export default function App() {
       <main className="flex-1">{renderMainContent()}</main>
 
       {/* Category quick links */}
-      {view.type !== 'article' && !loading && !error && (
+      {view.type !== 'article' && view.type !== 'author' && !loading && !error && (
         <div className="max-w-7xl mx-auto px-4 pb-8">
           <div className="flex flex-wrap gap-2 justify-center">
             {CATEGORIES.map((cat) => (

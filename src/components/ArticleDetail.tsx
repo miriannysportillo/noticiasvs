@@ -1,15 +1,34 @@
-import { ArrowLeft, Clock, Share2, Printer } from 'lucide-react';
+import { ArrowLeft, Clock, Share2, Printer, Globe, Instagram, Linkedin, Youtube, Twitter } from 'lucide-react';
 import type { Article } from '@/lib/supabase';
 import { formatDate, formatRelative } from '@/lib/utils';
+import { getAuthorProfile, type AuthorProfile } from '@/lib/authors';
 
 type ArticleDetailProps = {
   article: Article;
   related: Article[];
   onBack: () => void;
   onArticleClick: (article: Article) => void;
+  onAuthorClick: (authorName: string) => void;
+  authorProfile?: AuthorProfile;
 };
 
-export default function ArticleDetail({ article, related, onBack, onArticleClick }: ArticleDetailProps) {
+export default function ArticleDetail({ article, related, onBack, onArticleClick, onAuthorClick, authorProfile: loadedProfile }: ArticleDetailProps) {
+  const authorProfile = loadedProfile ?? getAuthorProfile(article.author);
+  const socialIcon = (platform: string) => {
+    switch (platform) {
+      case 'x':
+        return <Twitter size={16} />;
+      case 'linkedin':
+        return <Linkedin size={16} />;
+      case 'instagram':
+        return <Instagram size={16} />;
+      case 'youtube':
+        return <Youtube size={16} />;
+      default:
+        return <Globe size={16} />;
+    }
+  };
+
   return (
     <article className="max-w-3xl mx-auto px-4 py-8">
       <button
@@ -34,11 +53,22 @@ export default function ArticleDetail({ article, related, onBack, onArticleClick
 
       <div className="flex items-center justify-between flex-wrap gap-4 pb-6 mb-6 border-b border-stone-200">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white font-bold text-sm">
+          <button
+            type="button"
+            onClick={() => onAuthorClick(article.author)}
+            className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white font-bold text-sm hover:scale-105 transition-transform"
+            aria-label={`Ver perfil de ${article.author}`}
+          >
             {article.author.charAt(0)}
-          </div>
+          </button>
           <div>
-            <div className="text-sm font-semibold text-stone-900">{article.author}</div>
+            <button
+              type="button"
+              onClick={() => onAuthorClick(article.author)}
+              className="text-sm font-semibold text-stone-900 hover:text-emerald-700 transition-colors"
+            >
+              {article.author}
+            </button>
             <div className="text-xs text-stone-500 flex items-center gap-2">
               <span>{formatDate(article.published_at)}</span>
               <span>·</span>
@@ -72,6 +102,38 @@ export default function ArticleDetail({ article, related, onBack, onArticleClick
                    [&>p]:text-base [&>p]:leading-relaxed [&>p]:text-stone-700"
         dangerouslySetInnerHTML={{ __html: article.content }}
       />
+
+      {authorProfile && (
+        <aside className="mt-12 rounded-2xl border border-stone-200 bg-stone-50 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center text-lg font-bold">
+              {authorProfile.avatar}
+            </div>
+            <div className="flex-1">
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 font-semibold">Autor</p>
+              <h3 className="font-serif text-2xl font-bold text-stone-900">{authorProfile.name}</h3>
+              <p className="text-sm text-stone-600">{authorProfile.role}</p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-relaxed text-stone-700">{authorProfile.bio}</p>
+          {authorProfile.socialLinks.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {authorProfile.socialLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:border-emerald-500 hover:text-emerald-700 transition-colors"
+                >
+                  {socialIcon(link.platform)}
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          )}
+        </aside>
+      )}
 
       {related.length > 0 && (
         <div className="mt-12 pt-8 border-t border-stone-200">

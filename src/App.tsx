@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Loader2, Search } from 'lucide-react';
+import { ArrowDown, Loader2, Search } from 'lucide-react';
 import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
 import ArticleCard from '@/components/ArticleCard';
@@ -79,7 +79,11 @@ export default function App() {
 
   const handleNavigateHome = () => setView({ type: 'home' });
   const handleNavigateCategory = (category: string) => setView({ type: 'category', category });
-  const handleArticleClick = (article: Article) => setView({ type: 'article', article });
+  const handleArticleClick = (article: Article) => {
+    const nextArticle = { ...article, views: (article.views ?? 0) + 1 };
+    setView({ type: 'article', article: nextArticle });
+    supabase.rpc('increment_article_views', { article_id: article.id }).then(() => undefined);
+  };
   const handleAuthorClick = (authorName: string) => setView({ type: 'author', authorName });
   const handleSearch = (query: string) => setView({ type: 'search', query });
   const handleNavigateAdmin = () => setView({ type: 'admin' });
@@ -265,6 +269,16 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={() => document.getElementById('site-footer')?.scrollIntoView({ behavior: 'smooth' })}
+        className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-900/20 transition hover:bg-emerald-500 active:scale-95 md:hidden"
+        aria-label="Bajar al pie de página"
+        title="Bajar al pie de página"
+      >
+        <ArrowDown size={22} />
+      </button>
 
       <Footer onNavigateHome={handleNavigateHome} onNavigateCategory={handleNavigateCategory} onNavigateAdmin={handleNavigateAdmin} />
     </div>

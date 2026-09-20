@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, X, Save, Loader2, ArrowLeft, Star, Upload, LogOut, LockKeyhole } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Save, Loader2, ArrowLeft, Star, Upload, LogOut, LockKeyhole, Eye, Search } from 'lucide-react';
 import { supabase, type Article, type Author, type Session } from '@/lib/supabase';
 import { CATEGORIES } from '@/lib/categories';
 import BloggerImport from '@/components/BloggerImport';
@@ -81,6 +81,9 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [authorForm, setAuthorForm] = useState<AuthorFormData>(EMPTY_AUTHOR_FORM);
   const [authorError, setAuthorError] = useState<string | null>(null);
   const [savingAuthor, setSavingAuthor] = useState(false);
+  const [articleSort, setArticleSort] = useState<'recent' | 'views'>('recent');
+  const [articleQuery, setArticleQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
 
   const fetchArticles = async () => {
     setLoading(true);
@@ -92,7 +95,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     if (error) {
       setError('No se pudieron cargar los artículos.');
     } else {
-      setArticles(data ?? []);
+      setArticles((data ?? []).map((article) => ({ ...article, views: article.views ?? 0 })));
     }
     setLoading(false);
   };
@@ -198,7 +201,11 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       ? await supabase.from('authors').update(payload).eq('id', editingAuthorId)
       : await supabase.from('authors').insert(payload);
     if (result.error) {
-      setAuthorError('No se pudo guardar el autor. Verifica que el nombre no esté repetido.');
+      setAuthorError(
+        result.error.code === 'PGRST205'
+          ? 'La tabla de autores aún no está creada. Ejecuta la migración 20260920023000_add_authors.sql en Supabase.'
+          : 'No se pudo guardar el autor. Verifica que el nombre no esté repetido.'
+      );
     } else {
       closeAuthorForm();
       fetchAuthors();
@@ -256,44 +263,59 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     setSaving(true);
 
     if (editingId) {
-      const { error } = await supabase
+      const articleData = {
+        title: form.title.trim(),
+        slug,
+        excerpt: form.excerpt.trim(),
+        content: contentHtml,
+        category: form.category,
+        author: form.author.trim(),
+        image_url: form.image_url.trim(),
+        featured: form.featured,
+        status: form.status,
+        updated_at: new Date().toISOString(),
+      };
+      let result = await supabase
         .from('articles')
-        .update({
-          title: form.title.trim(),
-          slug,
-          excerpt: form.excerpt.trim(),
-          content: contentHtml,
-          category: form.category,
-          author: form.author.trim(),
-          image_url: form.image_url.trim(),
-          featured: form.featured,
-          status: form.status,
-          updated_at: new Date().toISOString(),
-        })
+        .update(articleData)
         .eq('id', editingId);
 
-      if (error) {
+      if (result.error?.code === '42703') {
+        const { status, updated_at, ...legacyArticleData } = articleData;
+        void status;
+        void updated_at;
+        result = await supabase.from('articles').update(legacyArticleData).eq('id', editingId);
+      }
+
+      if (result.error) {
         setFormError('No se pudo guardar. Verifica que el slug no esté repetido.');
       } else {
         closeForm();
         fetchArticles();
       }
     } else {
-      const { error } = await supabase
+      const articleData = {
+        title: form.title.trim(),
+        slug,
+        excerpt: form.excerpt.trim(),
+        content: contentHtml,
+        category: form.category,
+        author: form.author.trim(),
+        image_url: form.image_url.trim(),
+        featured: form.featured,
+        status: form.status,
+      };
+      let result = await supabase
         .from('articles')
-        .insert({
-          title: form.title.trim(),
-          slug,
-          excerpt: form.excerpt.trim(),
-          content: contentHtml,
-          category: form.category,
-          author: form.author.trim(),
-          image_url: form.image_url.trim(),
-          featured: form.featured,
-          status: form.status,
-        });
+        .insert(articleData);
 
-      if (error) {
+      if (result.error?.code === '42703') {
+        const { status, ...legacyArticleData } = articleData;
+        void status;
+        result = await supabase.from('articles').insert(legacyArticleData);
+      }
+
+      if (result.error) {
         setFormError('No se pudo crear. Verifica que el slug no esté repetido.');
       } else {
         closeForm();
@@ -315,6 +337,16 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       fetchArticles();
     }
   };
+
+  const visibleArticles = [...articles]
+    .filter((article) => statusFilter === 'all' || article.status === statusFilter)
+    .filter((article) => {
+      const query = articleQuery.trim().toLowerCase();
+      return !query || [article.title, article.author, article.category].some((value) => value.toLowerCase().includes(query));
+    })
+    .sort((left, right) => articleSort === 'views'
+      ? (right.views ?? 0) - (left.views ?? 0)
+      : new Date(right.published_at).getTime() - new Date(left.published_at).getTime());
 
   if (authLoading) {
     return (
@@ -390,24 +422,27 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             <span className="hidden sm:inline text-xs text-stone-400 mr-2">{session.user.email}</span>
             <button
               onClick={openNewAuthorForm}
-              className="flex items-center gap-2 px-4 py-2 bg-stone-700 hover:bg-stone-600 rounded-lg text-sm font-semibold transition-colors"
+              className="flex items-center gap-2 px-3 py-2 bg-stone-700 hover:bg-stone-600 rounded-lg text-sm font-semibold transition-colors"
+              aria-label="Gestionar autores"
+              title="Gestionar autores"
             >
               <Pencil size={18} />
-              Autores
             </button>
             <button
               onClick={() => setShowImport(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-stone-700 hover:bg-stone-600 rounded-lg text-sm font-semibold transition-colors"
+              className="p-2.5 bg-stone-700 hover:bg-stone-600 rounded-lg transition-colors"
+              aria-label="Importar desde Blogger"
+              title="Importar desde Blogger"
             >
               <Upload size={18} />
-              Importar desde Blogger
             </button>
             <button
               onClick={openNewForm}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold transition-colors"
+              className="p-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors"
+              aria-label="Nueva noticia"
+              title="Nueva noticia"
             >
               <Plus size={18} />
-              Nueva noticia
             </button>
             <button
               onClick={handleLogout}
@@ -438,9 +473,64 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           </div>
         ) : (
           <>
-            <p className="text-sm text-stone-500 mb-4">
-              {articles.length} artículo{articles.length !== 1 ? 's' : ''} en total
-            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+              <div className="bg-white border border-stone-200 rounded-xl p-4">
+                <p className="text-xs uppercase tracking-wider text-stone-500">Artículos</p>
+                <p className="mt-1 text-2xl font-bold text-stone-900">{articles.length}</p>
+              </div>
+              <div className="bg-white border border-stone-200 rounded-xl p-4">
+                <p className="text-xs uppercase tracking-wider text-stone-500">Publicados</p>
+                <p className="mt-1 text-2xl font-bold text-emerald-700">{articles.filter((article) => article.status === 'published').length}</p>
+              </div>
+              <div className="bg-white border border-stone-200 rounded-xl p-4">
+                <p className="text-xs uppercase tracking-wider text-stone-500">Vistas totales</p>
+                <p className="mt-1 text-2xl font-bold text-stone-900">{articles.reduce((total, article) => total + (article.views ?? 0), 0).toLocaleString('es-ES')}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <p className="text-sm text-stone-500">Gestiona el contenido editorial</p>
+              <div className="flex items-center gap-2">
+                <label className="relative hidden sm:block">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input
+                    value={articleQuery}
+                    onChange={(event) => setArticleQuery(event.target.value)}
+                    placeholder="Buscar noticias"
+                    className="w-48 pl-9 pr-3 py-2 bg-white border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                    aria-label="Buscar noticias"
+                  />
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value as 'all' | 'published' | 'draft')}
+                  className="px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                  aria-label="Filtrar por estado"
+                >
+                  <option value="all">Todos</option>
+                  <option value="published">Publicados</option>
+                  <option value="draft">Borradores</option>
+                </select>
+                <select
+                  value={articleSort}
+                  onChange={(event) => setArticleSort(event.target.value as 'recent' | 'views')}
+                  className="px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                  aria-label="Ordenar noticias"
+                >
+                  <option value="recent">Recientes</option>
+                  <option value="views">Más vistas</option>
+                </select>
+              </div>
+            </div>
+            <label className="relative block sm:hidden mb-4">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+              <input
+                value={articleQuery}
+                onChange={(event) => setArticleQuery(event.target.value)}
+                placeholder="Buscar noticias"
+                className="w-full pl-9 pr-3 py-2 bg-white border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                aria-label="Buscar noticias"
+              />
+            </label>
             {authors.length > 0 && (
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
@@ -465,7 +555,11 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
               </div>
             )}
             <div className="space-y-3">
-              {articles.map((article) => (
+              {visibleArticles.length === 0 ? (
+                <div className="bg-white border border-dashed border-stone-300 rounded-xl p-8 text-center text-sm text-stone-500">
+                  No hay noticias que coincidan con estos filtros.
+                </div>
+              ) : visibleArticles.map((article) => (
                 <div
                   key={article.id}
                   className="flex items-center gap-4 bg-white rounded-xl border border-stone-200 p-4 hover:shadow-md transition-shadow"
@@ -492,6 +586,10 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                       {article.title}
                     </h3>
                     <p className="text-xs text-stone-500 mt-0.5">{article.author}</p>
+                    <span className="inline-flex items-center gap-1 mt-2 text-xs text-stone-500">
+                      <Eye size={13} />
+                      {(article.views ?? 0).toLocaleString('es-ES')} vistas
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button

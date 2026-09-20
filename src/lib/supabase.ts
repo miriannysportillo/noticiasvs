@@ -26,6 +26,7 @@ export type Article = {
   published_at: string;
   created_at: string;
   updated_at: string;
+  views?: number;
 };
 
 export type Author = {

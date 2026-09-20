@@ -1,4 +1,4 @@
-import { Wind, Facebook, Twitter, Instagram, Youtube, Send, Settings } from 'lucide-react';
+import { Wind, Facebook, Instagram, Youtube, Music2, Mail, Send, Settings } from 'lucide-react';
 import { CATEGORIES } from '@/lib/categories';
 
 type FooterProps = {
@@ -8,8 +8,15 @@ type FooterProps = {
 };
 
 export default function Footer({ onNavigateHome, onNavigateCategory, onNavigateAdmin }: FooterProps) {
+  const socialLinks = [
+    { label: 'Facebook', href: 'https://www.facebook.com/radiolibrevientosur', Icon: Facebook },
+    { label: 'Instagram', href: 'https://www.instagram.com/vientosur885', Icon: Instagram },
+    { label: 'TikTok', href: 'https://www.tiktok.com/@radiolibrevientosur', Icon: Music2 },
+    { label: 'YouTube', href: 'https://www.youtube.com/@radiolibrevientosur9211', Icon: Youtube },
+  ];
+
   return (
-    <footer className="bg-stone-900 text-stone-300 mt-16">
+    <footer id="site-footer" className="bg-stone-900 text-stone-300 mt-16 scroll-mt-4">
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
@@ -29,17 +36,27 @@ export default function Footer({ onNavigateHome, onNavigateCategory, onNavigateA
               Noticias del sur del continente. Periodismo independiente, rigor y compromiso con la verdad.
             </p>
             <div className="flex items-center gap-3 mt-4">
-              {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) => (
+              {socialLinks.map(({ label, href, Icon }) => (
                 <a
-                  key={i}
-                  href="#"
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
                   className="w-9 h-9 rounded-full bg-stone-800 hover:bg-emerald-600 flex items-center justify-center transition-colors"
-                  aria-label="Red social"
+                  aria-label={label}
+                  title={label}
                 >
                   <Icon size={16} />
                 </a>
               ))}
             </div>
+            <a
+              href="mailto:radiolibrevientosur@gmail.com"
+              className="inline-flex items-center gap-2 mt-4 text-sm text-stone-400 hover:text-emerald-400 transition-colors"
+            >
+              <Mail size={15} />
+              radiolibrevientosur@gmail.com
+            </a>
           </div>
 
           {/* Sections */}

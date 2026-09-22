@@ -9,7 +9,7 @@ import Footer from '@/components/Footer';
 import AdminPanel from '@/components/AdminPanel';
 import AuthorProfile from '@/components/AuthorProfile';
 import { isSupabaseConfigured, supabase, type Article, type Author } from '@/lib/supabase';
-import { CATEGORIES } from '@/lib/categories';
+import { CATEGORIES, CATEGORY_SLUGS, SLUG_TO_CATEGORY } from '@/lib/categories';
 import { mapAuthorProfile, type AuthorProfile as AuthorProfileData } from '@/lib/authors';
 
 type View =
@@ -75,6 +75,173 @@ export default function App() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [view]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const pathname = window.location.pathname;
+
+    const authorMatch = pathname.match(/^\/autor\/([^/]+)$/);
+    if (authorMatch) {
+      const slug = decodeURIComponent(authorMatch[1]);
+      const authorName = Object.keys(authors).find((name) => {
+        const candidate = name.toLowerCase().trim();
+        return candidate.replace(/\s+/g, '-') === slug;
+      }) ?? decodeURIComponent(slug).replace(/-/g, ' ');
+
+      if (authorName) {
+        setView((current) => {
+          if (current.type === 'author' && current.authorName === authorName) {
+            return current;
+          }
+          return { type: 'author', authorName };
+        });
+      }
+      return;
+    }
+
+    const categoryMatch = pathname.match(/^\/categoria\/([^/]+)$/);
+    if (categoryMatch) {
+      const slug = decodeURIComponent(categoryMatch[1]);
+      const category = SLUG_TO_CATEGORY[slug];
+      if (category) {
+        setView((current) => {
+          if (current.type === 'category' && current.category === category) {
+            return current;
+          }
+          return { type: 'category', category };
+        });
+      }
+      return;
+    }
+
+    const articleMatch = pathname.match(/^\/noticia\/([^/]+)$/);
+    if (articleMatch) {
+      const slug = decodeURIComponent(articleMatch[1]);
+      const articleFromUrl = articles.find((item) => item.slug === slug);
+      if (articleFromUrl) {
+        setView((current) => {
+          if (current.type === 'article' && current.article.id === articleFromUrl.id) {
+            return current;
+          }
+          return { type: 'article', article: articleFromUrl };
+        });
+      }
+    }
+  }, [articles, authors]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const currentPath = window.location.pathname;
+
+    if (view.type === 'article') {
+      const nextPath = `/noticia/${encodeURIComponent(view.article.slug)}`;
+      if (currentPath !== nextPath) {
+        window.history.pushState({}, '', nextPath);
+      }
+      return;
+    }
+
+    if (view.type === 'category') {
+      const nextPath = `/categoria/${CATEGORY_SLUGS[view.category] ?? view.category}`;
+      if (currentPath !== nextPath) {
+        window.history.pushState({}, '', nextPath);
+      }
+      return;
+    }
+
+    if (view.type === 'author') {
+      const nextPath = `/autor/${encodeURIComponent(view.authorName.toLowerCase().replace(/\s+/g, '-'))}`;
+      if (currentPath !== nextPath) {
+        window.history.pushState({}, '', nextPath);
+      }
+      return;
+    }
+
+    if (currentPath.startsWith('/noticia/') || currentPath.startsWith('/categoria/') || currentPath.startsWith('/autor/')) {
+      window.history.pushState({}, '', '/');
+    }
+  }, [view]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const description = view.type === 'article'
+      ? view.article.excerpt || view.article.title
+      : 'Viento Sur ofrece noticias, análisis y reportajes del sur del continente con rigor editorial.';
+
+    const title = view.type === 'article'
+      ? `${view.article.title} | Viento Sur`
+      : 'Viento Sur | Noticias del sur del continente';
+
+    document.title = title;
+
+    const setMeta = (selector: string, attribute: string, value: string) => {
+      let element = document.head.querySelector(selector) as HTMLMetaElement | null;
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute(attribute, selector.includes('name') ? 'description' : 'og:description');
+        if (selector.includes('property')) {
+          element.setAttribute('property', selector.replace('meta[property="', '').replace('"]', ''));
+        }
+        document.head.appendChild(element);
+      }
+      element.setAttribute(
+        selector.includes('name') ? 'content' : 'content',
+        value
+      );
+    };
+
+    const metaDescription = document.head.querySelector('meta[name="description"]') ?? document.createElement('meta');
+    metaDescription.setAttribute('name', 'description');
+    metaDescription.setAttribute('content', description);
+    if (!document.head.contains(metaDescription)) {
+      document.head.appendChild(metaDescription);
+    }
+
+    const ogTitle = document.head.querySelector('meta[property="og:title"]') ?? document.createElement('meta');
+    ogTitle.setAttribute('property', 'og:title');
+    ogTitle.setAttribute('content', title);
+    if (!document.head.contains(ogTitle)) {
+      document.head.appendChild(ogTitle);
+    }
+
+    const ogDescription = document.head.querySelector('meta[property="og:description"]') ?? document.createElement('meta');
+    ogDescription.setAttribute('property', 'og:description');
+    ogDescription.setAttribute('content', description);
+    if (!document.head.contains(ogDescription)) {
+      document.head.appendChild(ogDescription);
+    }
+
+    const ogImage = document.head.querySelector('meta[property="og:image"]') ?? document.createElement('meta');
+    ogImage.setAttribute('property', 'og:image');
+    ogImage.setAttribute('content', view.type === 'article' ? view.article.image_url : 'https://images.unsplash.com/...');
+    if (!document.head.contains(ogImage)) {
+      document.head.appendChild(ogImage);
+    }
+
+    const twitterTitle = document.head.querySelector('meta[name="twitter:title"]') ?? document.createElement('meta');
+    twitterTitle.setAttribute('name', 'twitter:title');
+    twitterTitle.setAttribute('content', title);
+    if (!document.head.contains(twitterTitle)) {
+      document.head.appendChild(twitterTitle);
+    }
+
+    const twitterDescription = document.head.querySelector('meta[name="twitter:description"]') ?? document.createElement('meta');
+    twitterDescription.setAttribute('name', 'twitter:description');
+    twitterDescription.setAttribute('content', description);
+    if (!document.head.contains(twitterDescription)) {
+      document.head.appendChild(twitterDescription);
+    }
+
+    const twitterImage = document.head.querySelector('meta[name="twitter:image"]') ?? document.createElement('meta');
+    twitterImage.setAttribute('name', 'twitter:image');
+    twitterImage.setAttribute('content', view.type === 'article' ? view.article.image_url : 'https://images.unsplash.com/...');
+    if (!document.head.contains(twitterImage)) {
+      document.head.appendChild(twitterImage);
+    }
   }, [view]);
 
   const handleNavigateHome = () => setView({ type: 'home' });

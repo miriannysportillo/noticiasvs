@@ -16,6 +16,11 @@ DROP POLICY IF EXISTS "anon_select_articles" ON articles;
 DROP POLICY IF EXISTS "anon_insert_articles" ON articles;
 DROP POLICY IF EXISTS "anon_update_articles" ON articles;
 DROP POLICY IF EXISTS "anon_delete_articles" ON articles;
+DROP POLICY IF EXISTS "public_read_published_articles" ON articles;
+DROP POLICY IF EXISTS "editors_read_all_articles" ON articles;
+DROP POLICY IF EXISTS "editors_insert_articles" ON articles;
+DROP POLICY IF EXISTS "editors_update_articles" ON articles;
+DROP POLICY IF EXISTS "editors_delete_articles" ON articles;
 
 CREATE POLICY "public_read_published_articles" ON articles FOR SELECT
   TO anon USING (status = 'published');

@@ -13,6 +13,7 @@ export default function Footer({ onNavigateHome, onNavigateCategory, onNavigateA
     { label: 'Instagram', href: 'https://www.instagram.com/vientosur885', Icon: Instagram },
     { label: 'TikTok', href: 'https://www.tiktok.com/@radiolibrevientosur', Icon: Music2 },
     { label: 'YouTube', href: 'https://www.youtube.com/@radiolibrevientosur9211', Icon: Youtube },
+    { label: 'Telegram', href: 'https://t.me/radiolibrevientosur', Icon: Send },
   ];
 
   return (

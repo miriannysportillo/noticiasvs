@@ -59,6 +59,26 @@ function slugify(text: string): string {
     .replace(/-+/g, '-');
 }
 
+function getCurrentRole(session: Session | null): 'admin' | 'editor' {
+  const metadata = {
+    ...(session?.user?.user_metadata ?? {}),
+    ...(session?.user?.app_metadata ?? {}),
+  } as Record<string, unknown>;
+
+  const role = String(metadata.role ?? metadata.userRole ?? metadata.access ?? 'editor').toLowerCase();
+  return role === 'admin' ? 'admin' : 'editor';
+}
+
+function getCurrentAuthorName(session: Session | null): string {
+  const metadata = {
+    ...(session?.user?.user_metadata ?? {}),
+    ...(session?.user?.app_metadata ?? {}),
+  } as Record<string, unknown>;
+
+  const raw = metadata.author_name ?? metadata.authorName ?? metadata.full_name ?? metadata.name ?? '';
+  return String(raw).trim();
+}
+
 export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [authors, setAuthors] = useState<Author[]>([]);
@@ -76,6 +96,16 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
+  const [registerForm, setRegisterForm] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    authorName: '',
+    role: 'editor' as 'editor',
+  });
   const [showAuthorForm, setShowAuthorForm] = useState(false);
   const [editingAuthorId, setEditingAuthorId] = useState<string | null>(null);
   const [authorForm, setAuthorForm] = useState<AuthorFormData>(EMPTY_AUTHOR_FORM);
@@ -84,6 +114,13 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [articleSort, setArticleSort] = useState<'recent' | 'views'>('recent');
   const [articleQuery, setArticleQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
+  const [adminUsers, setAdminUsers] = useState<Array<{ id: string; email: string; role: string; full_name: string; author_name: string }>>([]);
+  const [userManagementBusy, setUserManagementBusy] = useState(false);
+
+  const currentRole = getCurrentRole(session);
+  const currentAuthorName = getCurrentAuthorName(session);
+  const canManageAll = currentRole === 'admin';
+  const canManageOwnProfile = currentRole === 'editor' && Boolean(currentAuthorName);
 
   const fetchArticles = async () => {
     setLoading(true);
@@ -105,6 +142,18 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     setAuthors((data as Author[] | null) ?? []);
   };
 
+  const fetchAdminUsers = async () => {
+    if (!canManageAll) {
+      setAdminUsers([]);
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('list_admin_users');
+    if (!error) {
+      setAdminUsers((data as Array<{ id: string; email: string; role: string; full_name: string; author_name: string }> | null) ?? []);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -115,6 +164,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       if (data.session) {
         fetchArticles();
         fetchAuthors();
+        fetchAdminUsers();
       }
     });
 
@@ -123,6 +173,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       if (nextSession) {
         fetchArticles();
         fetchAuthors();
+        fetchAdminUsers();
       }
       else setArticles([]);
     });
@@ -136,6 +187,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    setRegisterSuccess(null);
     setLoggingIn(true);
 
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
@@ -143,11 +195,89 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     setLoggingIn(false);
   };
 
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setRegisterSuccess(null);
+    setRegistering(true);
+
+    const cleanedEmail = registerForm.email.trim();
+    const cleanedFullName = registerForm.fullName.trim();
+    const cleanedAuthorName = registerForm.authorName.trim() || cleanedFullName;
+
+    if (!cleanedEmail || !registerForm.password || !cleanedFullName || !cleanedAuthorName) {
+      setAuthError('Nombre completo, email, contraseña y nombre de autor son obligatorios.');
+      setRegistering(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.signUp({
+      email: cleanedEmail,
+      password: registerForm.password,
+      options: {
+        data: {
+          role: 'editor',
+          full_name: cleanedFullName,
+          author_name: cleanedAuthorName,
+        },
+      },
+    });
+
+    if (error) {
+      setAuthError(error.message || 'No se pudo crear la cuenta.');
+      setRegistering(false);
+      return;
+    }
+
+    const initials = cleanedAuthorName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? '')
+      .join('') || 'AU';
+
+    await supabase.from('authors').upsert(
+      {
+        name: cleanedAuthorName,
+        role: 'Editor',
+        bio: `Perfil de ${cleanedFullName}.`,
+        avatar: initials,
+        social_links: [],
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'name' }
+    );
+
+    setRegisterSuccess('Cuenta creada correctamente. Revisa tu correo para confirmar la cuenta.');
+    setRegisterForm({
+      email: '',
+      password: '',
+      fullName: '',
+      authorName: '',
+      role: 'editor',
+    });
+    setShowRegister(false);
+    setRegistering(false);
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
 
   const openNewAuthorForm = () => {
+    if (!canManageAll && !canManageOwnProfile) {
+      setAuthorError('No tienes permisos para gestionar autores.');
+      return;
+    }
+    if (!canManageAll) {
+      const ownProfile = authors.find((author) => author.name === currentAuthorName);
+      if (!ownProfile) {
+        setAuthorError('Tu perfil de autor aún no existe. Contacta al administrador.');
+        return;
+      }
+      openEditAuthorForm(ownProfile);
+      return;
+    }
     setAuthorForm(EMPTY_AUTHOR_FORM);
     setEditingAuthorId(null);
     setAuthorError(null);
@@ -155,6 +285,10 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   };
 
   const openEditAuthorForm = (author: Author) => {
+    if (!canManageAll && author.name !== currentAuthorName) {
+      setAuthorError('Solo puedes editar tu propio perfil de autor.');
+      return;
+    }
     setAuthorForm({
       name: author.name,
       role: author.role,
@@ -177,8 +311,16 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const handleSaveAuthor = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthorError(null);
+    if (!canManageAll && authorForm.name.trim() !== currentAuthorName) {
+      setAuthorError('Solo puedes editar tu propio perfil de autor.');
+      return;
+    }
     if (!authorForm.name.trim() || !authorForm.role.trim() || !authorForm.bio.trim()) {
       setAuthorError('Nombre, rol y biografía son obligatorios.');
+      return;
+    }
+    if (!canManageAll && !editingAuthorId) {
+      setAuthorError('Los editores no pueden crear perfiles nuevos.');
       return;
     }
 
@@ -214,13 +356,24 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   };
 
   const openNewForm = () => {
-    setForm(EMPTY_FORM);
+    if (!canManageAll && !canManageOwnProfile) {
+      setFormError('No tienes permisos para crear artículos.');
+      return;
+    }
+    setForm({
+      ...EMPTY_FORM,
+      author: canManageAll ? EMPTY_FORM.author : currentAuthorName,
+    });
     setEditingId(null);
     setFormError(null);
     setShowForm(true);
   };
 
   const openEditForm = (article: Article) => {
+    if (!canManageAll && article.author !== currentAuthorName) {
+      setFormError('Solo puedes editar tus propios artículos.');
+      return;
+    }
     setForm({
       title: article.title,
       slug: article.slug,
@@ -247,6 +400,16 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+
+    if (!canManageAll && !canManageOwnProfile) {
+      setFormError('No tienes permisos para guardar noticias.');
+      return;
+    }
+
+    if (!canManageAll && form.author.trim() !== currentAuthorName) {
+      setFormError('Un editor solo puede trabajar con su propio perfil de autor.');
+      return;
+    }
 
     if (!form.title.trim() || !form.excerpt.trim() || !form.content.trim() || !form.author.trim() || !form.image_url.trim()) {
       setFormError('Todos los campos son obligatorios.');
@@ -327,6 +490,10 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   };
 
   const handleDelete = async (article: Article) => {
+    if (!canManageAll) {
+      setFormError('Los editores no pueden eliminar artículos.');
+      return;
+    }
     if (!confirm(`¿Seguro que quieres borrar "${article.title}"? Esta acción no se puede deshacer.`)) {
       return;
     }
@@ -338,7 +505,51 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     }
   };
 
+  const handleUserRoleChange = async (email: string, nextRole: 'admin' | 'editor') => {
+    if (!canManageAll) {
+      return;
+    }
+
+    setUserManagementBusy(true);
+    const { error } = await supabase.rpc('set_user_role', {
+      target_email: email,
+      target_role: nextRole,
+    });
+    setUserManagementBusy(false);
+
+    if (error) {
+      alert(error.message || 'No se pudo cambiar el rol del usuario.');
+      return;
+    }
+
+    await fetchAdminUsers();
+  };
+
+  const handleDeleteEditor = async (email: string) => {
+    if (!canManageAll) {
+      return;
+    }
+
+    if (!confirm(`¿Seguro que quieres eliminar al usuario ${email}?`)) {
+      return;
+    }
+
+    setUserManagementBusy(true);
+    const { error } = await supabase.rpc('delete_user_by_email', {
+      target_email: email,
+    });
+    setUserManagementBusy(false);
+
+    if (error) {
+      alert(error.message || 'No se pudo eliminar al usuario.');
+      return;
+    }
+
+    await fetchAdminUsers();
+  };
+
   const visibleArticles = [...articles]
+    .filter((article) => canManageAll || article.author === currentAuthorName)
     .filter((article) => statusFilter === 'all' || article.status === statusFilter)
     .filter((article) => {
       const query = articleQuery.trim().toLowerCase();
@@ -364,40 +575,115 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             <LockKeyhole size={24} />
           </div>
           <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 mb-2">Viento Sur</p>
-          <h1 className="font-serif text-2xl font-bold text-stone-900 mb-2">Acceso editorial</h1>
-          <p className="text-sm text-stone-500 mb-6">Inicia sesión para gestionar las noticias del sitio.</p>
+          <h1 className="font-serif text-2xl font-bold text-stone-900 mb-2">{showRegister ? 'Crear cuenta editorial' : 'Acceso editorial'}</h1>
+          <p className="text-sm text-stone-500 mb-6">
+            {showRegister
+              ? 'Los usuarios nuevos se registran como editores. El rol de administrador se asigna de forma controlada.'
+              : 'Inicia sesión para gestionar las noticias del sitio.'}
+          </p>
           {authError && <p className="px-3 py-2 mb-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">{authError}</p>}
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Correo electrónico</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Contraseña</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loggingIn}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-            >
-              {loggingIn && <Loader2 size={16} className="animate-spin" />}
-              Entrar al panel
-            </button>
-          </form>
-          <button onClick={onBack} className="w-full mt-4 text-sm text-stone-500 hover:text-emerald-700">Volver al sitio público</button>
+          {registerSuccess && <p className="px-3 py-2 mb-4 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">{registerSuccess}</p>}
+
+          {showRegister ? (
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Correo electrónico</label>
+                <input
+                  type="email"
+                  value={registerForm.email}
+                  onChange={(e) => setRegisterForm((current) => ({ ...current, email: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Contraseña</label>
+                <input
+                  type="password"
+                  value={registerForm.password}
+                  onChange={(e) => setRegisterForm((current) => ({ ...current, password: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Nombre completo</label>
+                <input
+                  type="text"
+                  value={registerForm.fullName}
+                  onChange={(e) => setRegisterForm((current) => ({ ...current, fullName: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Nombre del autor</label>
+                <input
+                  type="text"
+                  value={registerForm.authorName}
+                  onChange={(e) => setRegisterForm((current) => ({ ...current, authorName: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                  placeholder="Ej: Ana López"
+                  required
+                />
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Los nuevos registros se crean como editores. El rol de administrador debe asignarlo un usuario ya autorizado desde Supabase.
+              </div>
+              <button
+                type="submit"
+                disabled={registering}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+              >
+                {registering && <Loader2 size={16} className="animate-spin" />}
+                Crear cuenta
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Correo electrónico</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Contraseña</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loggingIn}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+              >
+                {loggingIn && <Loader2 size={16} className="animate-spin" />}
+                Entrar al panel
+              </button>
+            </form>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowRegister((value) => !value);
+              setAuthError(null);
+              setRegisterSuccess(null);
+            }}
+            className="w-full mt-4 text-sm text-stone-500 hover:text-emerald-700"
+          >
+            {showRegister ? 'Ya tengo cuenta. Iniciar sesión' : 'Crear una cuenta editorial'}
+          </button>
+          <button onClick={onBack} className="w-full mt-2 text-sm text-stone-500 hover:text-emerald-700">Volver al sitio público</button>
         </div>
       </div>
     );
@@ -420,22 +706,29 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           </div>
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline text-xs text-stone-400 mr-2">{session.user.email}</span>
-            <button
-              onClick={openNewAuthorForm}
-              className="flex items-center gap-2 px-3 py-2 bg-stone-700 hover:bg-stone-600 rounded-lg text-sm font-semibold transition-colors"
-              aria-label="Gestionar autores"
-              title="Gestionar autores"
-            >
-              <Pencil size={18} />
-            </button>
-            <button
-              onClick={() => setShowImport(true)}
-              className="p-2.5 bg-stone-700 hover:bg-stone-600 rounded-lg transition-colors"
-              aria-label="Importar desde Blogger"
-              title="Importar desde Blogger"
-            >
-              <Upload size={18} />
-            </button>
+            <span className={`hidden sm:inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${canManageAll ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+              {canManageAll ? 'Admin' : 'Editor'}
+            </span>
+            {canManageAll && (
+              <button
+                onClick={openNewAuthorForm}
+                className="flex items-center gap-2 px-3 py-2 bg-stone-700 hover:bg-stone-600 rounded-lg text-sm font-semibold transition-colors"
+                aria-label="Gestionar autores"
+                title="Gestionar autores"
+              >
+                <Pencil size={18} />
+              </button>
+            )}
+            {canManageAll && (
+              <button
+                onClick={() => setShowImport(true)}
+                className="p-2.5 bg-stone-700 hover:bg-stone-600 rounded-lg transition-colors"
+                aria-label="Importar desde Blogger"
+                title="Importar desde Blogger"
+              >
+                <Upload size={18} />
+              </button>
+            )}
             <button
               onClick={openNewForm}
               className="p-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors"
@@ -531,14 +824,16 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 aria-label="Buscar noticias"
               />
             </label>
-            {authors.length > 0 && (
+            {(canManageAll ? authors : authors.filter((author) => author.name === currentAuthorName)).length > 0 && (
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-serif text-lg font-bold text-stone-900">Autores</h2>
-                  <span className="text-xs text-stone-500">{authors.length} perfil{authors.length !== 1 ? 'es' : ''}</span>
+                  <h2 className="font-serif text-lg font-bold text-stone-900">{canManageAll ? 'Autores' : 'Mi perfil'}</h2>
+                  <span className="text-xs text-stone-500">
+                    {canManageAll ? `${authors.length} perfil${authors.length !== 1 ? 'es' : ''}` : 'Solo lectura y edición personal'}
+                  </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {authors.map((author) => (
+                  {(canManageAll ? authors : authors.filter((author) => author.name === currentAuthorName)).map((author) => (
                     <button
                       key={author.id}
                       type="button"
@@ -554,6 +849,49 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 </div>
               </div>
             )}
+            {canManageAll && (
+              <div className="mb-6 rounded-2xl border border-stone-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <h2 className="font-serif text-lg font-bold text-stone-900">Usuarios del sitio</h2>
+                  <span className="text-xs text-stone-500">Administra roles y accesos</span>
+                </div>
+                {userManagementBusy && (
+                  <div className="mb-3 text-xs text-amber-700">Actualizando permisos…</div>
+                )}
+                <div className="space-y-3">
+                  {adminUsers.length === 0 ? (
+                    <p className="text-sm text-stone-500">No hay usuarios para gestionar.</p>
+                  ) : adminUsers.map((user) => (
+                    <div key={user.id} className="flex flex-col gap-3 border border-stone-200 rounded-xl p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="font-medium text-stone-900 truncate">{user.full_name || user.author_name || user.email}</p>
+                        <p className="text-xs text-stone-500 truncate">{user.email}</p>
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mt-1">{user.role}</p>
+                      </div>
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        <select
+                          value={user.role === 'admin' ? 'admin' : 'editor'}
+                          onChange={(event) => handleUserRoleChange(user.email, event.target.value as 'admin' | 'editor')}
+                          className="px-2 py-1.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500 bg-white"
+                          aria-label={`Cambiar rol para ${user.email}`}
+                        >
+                          <option value="editor">Editor</option>
+                          <option value="admin">Administrador</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteEditor(user.email)}
+                          className="px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm hover:bg-red-100"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               {visibleArticles.length === 0 ? (
                 <div className="bg-white border border-dashed border-stone-300 rounded-xl p-8 text-center text-sm text-stone-500">

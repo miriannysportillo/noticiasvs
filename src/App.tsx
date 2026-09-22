@@ -26,6 +26,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>({ type: 'home' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 6;
 
   const fetchArticles = useCallback(async () => {
     setLoading(true);
@@ -128,6 +130,11 @@ export default function App() {
           return { type: 'article', article: articleFromUrl };
         });
       }
+      return;
+    }
+
+    if (pathname !== '/' && !pathname.startsWith('/_')) {
+      setView({ type: 'home' });
     }
   }, [articles, authors]);
 
@@ -160,7 +167,7 @@ export default function App() {
       return;
     }
 
-    if (currentPath.startsWith('/noticia/') || currentPath.startsWith('/categoria/') || currentPath.startsWith('/autor/')) {
+    if (currentPath !== '/' && !currentPath.startsWith('/_')) {
       window.history.pushState({}, '', '/');
     }
   }, [view]);
@@ -255,6 +262,15 @@ export default function App() {
   const handleSearch = (query: string) => setView({ type: 'search', query });
   const handleNavigateAdmin = () => setView({ type: 'admin' });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    view.type,
+    view.type === 'category' ? view.category : '',
+    view.type === 'search' ? view.query : '',
+    view.type === 'author' ? view.authorName : '',
+  ]);
+
   const featured = articles.filter((a) => a.featured);
   const nonFeatured = articles.filter((a) => !a.featured);
 
@@ -274,6 +290,11 @@ export default function App() {
     }
     return nonFeatured;
   };
+
+  const filteredArticles = getFilteredArticles();
+  const totalPages = Math.max(1, Math.ceil(filteredArticles.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedArticles = filteredArticles.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
 
   const getRelated = (article: Article) =>
     articles
@@ -331,7 +352,7 @@ export default function App() {
       );
     }
 
-    const filtered = getFilteredArticles();
+    const filtered = filteredArticles;
     const isHome = view.type === 'home';
     const title =
       view.type === 'category'
@@ -360,16 +381,44 @@ export default function App() {
                   <p className="text-stone-500 text-lg">No se encontraron noticias.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  {filtered.map((article) => (
-                    <ArticleCard
-                      key={article.id}
-                      article={article}
-                      onClick={handleArticleClick}
-                      onAuthorClick={handleAuthorClick}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    {paginatedArticles.map((article) => (
+                      <ArticleCard
+                        key={article.id}
+                        article={article}
+                        onClick={handleArticleClick}
+                        onAuthorClick={handleAuthorClick}
+                      />
+                    ))}
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div className="mt-6 flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                        disabled={safeCurrentPage === 1}
+                        className="px-3 py-2 rounded-lg border border-stone-300 bg-white text-sm text-stone-700 disabled:opacity-40"
+                      >
+                        Anterior
+                      </button>
+
+                      <span className="px-3 py-2 text-sm text-stone-600">
+                        Página {safeCurrentPage} de {totalPages}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                        disabled={safeCurrentPage === totalPages}
+                        className="px-3 py-2 rounded-lg border border-stone-300 bg-white text-sm text-stone-700 disabled:opacity-40"
+                      >
+                        Siguiente
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

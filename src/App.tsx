@@ -133,7 +133,7 @@ export default function App() {
       return;
     }
 
-    if (pathname !== '/' && !pathname.startsWith('/_')) {
+    if (pathname !== '/' && !pathname.startsWith('/_') && !/^\/(noticia|categoria|autor)\//.test(pathname)) {
       setView({ type: 'home' });
     }
   }, [articles, authors]);
@@ -167,7 +167,7 @@ export default function App() {
       return;
     }
 
-    if (currentPath !== '/' && !currentPath.startsWith('/_')) {
+    if (currentPath !== '/' && !currentPath.startsWith('/_') && !/^\/(noticia|categoria|autor)\//.test(currentPath)) {
       window.history.pushState({}, '', '/');
     }
   }, [view]);

@@ -805,12 +805,15 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                       <div className="min-w-0">
                         <p className="font-medium text-stone-900 truncate">{user.full_name || user.author_name || user.email}</p>
                         <p className="text-xs text-stone-500 truncate">{user.email}</p>
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mt-1">{user.role}</p>
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mt-1">
+                          {user.role}{user.id === session.user.id ? ' · Tu cuenta' : ''}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2 self-end sm:self-center">
                         <select
                           value={user.role === 'admin' ? 'admin' : 'editor'}
                           onChange={(event) => handleUserRoleChange(user.email, event.target.value as 'admin' | 'editor')}
+                          disabled={user.id === session.user.id || userManagementBusy}
                           className="px-2 py-1.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500 bg-white"
                           aria-label={`Cambiar rol para ${user.email}`}
                         >
@@ -820,6 +823,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                         <button
                           type="button"
                           onClick={() => handleDeleteEditor(user.email)}
+                          disabled={user.id === session.user.id || userManagementBusy}
                           className="px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm hover:bg-red-100"
                         >
                           Eliminar

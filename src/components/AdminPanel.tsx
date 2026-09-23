@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, X, Save, Loader2, ArrowLeft, Star, Upload, LogOut, LockKeyhole, Eye, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Save, Loader2, ArrowLeft, Star, Upload, LogOut, LockKeyhole, Eye, Search, Download } from 'lucide-react';
 import { supabase, type Article, type Author, type Session } from '@/lib/supabase';
 import { CATEGORIES } from '@/lib/categories';
 import BloggerImport from '@/components/BloggerImport';
@@ -26,6 +26,15 @@ type AuthorFormData = {
   bio: string;
   avatar: string;
   socialLinks: string;
+};
+
+type NewsletterSubscriber = {
+  id: string;
+  email: string;
+  status: 'active' | 'unsubscribed';
+  source: string;
+  subscribed_at: string;
+  updated_at: string;
 };
 
 const EMPTY_FORM: FormData = {
@@ -118,6 +127,9 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [userManagementBusy, setUserManagementBusy] = useState(false);
   const [userManagementMessage, setUserManagementMessage] = useState<string | null>(null);
   const [userActionEmail, setUserActionEmail] = useState<string | null>(null);
+  const [newsletterSubscribers, setNewsletterSubscribers] = useState<NewsletterSubscriber[]>([]);
+  const [newsletterStatusFilter, setNewsletterStatusFilter] = useState<'all' | 'active' | 'unsubscribed'>('active');
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
 
   const currentRole = getCurrentRole(session);
   const currentAuthorName = getCurrentAuthorName(session);
@@ -156,6 +168,18 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     }
   };
 
+  const fetchNewsletterSubscribers = async () => {
+    if (!canManageAll) {
+      setNewsletterSubscribers([]);
+      return;
+    }
+
+    setNewsletterLoading(true);
+    const { data } = await supabase.rpc('list_newsletter_subscribers');
+    setNewsletterSubscribers((data as NewsletterSubscriber[] | null) ?? []);
+    setNewsletterLoading(false);
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -167,6 +191,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
         fetchArticles();
         fetchAuthors();
         fetchAdminUsers();
+        fetchNewsletterSubscribers();
       }
     });
 
@@ -176,6 +201,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
         fetchArticles();
         fetchAuthors();
         fetchAdminUsers();
+        fetchNewsletterSubscribers();
       }
       else setArticles([]);
     });
@@ -184,7 +210,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [canManageAll]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -566,6 +592,46 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     setUserManagementMessage(`El usuario ${email} fue eliminado.`);
   };
 
+  const handleNewsletterStatusChange = async (subscriber: NewsletterSubscriber) => {
+    const nextStatus = subscriber.status === 'active' ? 'unsubscribed' : 'active';
+    const action = nextStatus === 'active' ? 'reactivar' : 'dar de baja';
+    if (!confirm(`¿Quieres ${action} a ${subscriber.email}?`)) {
+      return;
+    }
+
+    setNewsletterLoading(true);
+    const { error } = await supabase.rpc('set_newsletter_subscriber_status', {
+      target_id: subscriber.id,
+      target_status: nextStatus,
+    });
+    if (!error) {
+      await fetchNewsletterSubscribers();
+    } else {
+      alert(error.message || 'No se pudo actualizar la suscripción.');
+      setNewsletterLoading(false);
+    }
+  };
+
+  const handleExportNewsletter = () => {
+    const rows = newsletterSubscribers.map((subscriber) => [
+      subscriber.email,
+      subscriber.status,
+      subscriber.source,
+      new Date(subscriber.subscribed_at).toLocaleString('es-ES'),
+    ]);
+    const csv = [
+      ['email', 'estado', 'origen', 'suscrito_en'],
+      ...rows,
+    ].map((row) => row.map((value) => `"${value.replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'suscriptores-boletin.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const visibleArticles = [...articles]
     .filter((article) => canManageAll || article.author === currentAuthorName)
     .filter((article) => statusFilter === 'all' || article.status === statusFilter)
@@ -857,6 +923,68 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {canManageAll && (
+              <div className="mb-6 rounded-2xl border border-stone-200 bg-white p-4">
+                <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="font-serif text-lg font-bold text-stone-900">Suscriptores del boletín</h2>
+                    <p className="text-xs text-stone-500 mt-1">Gestiona los correos registrados en “El Boletín del Sur”.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={newsletterStatusFilter}
+                      onChange={(event) => setNewsletterStatusFilter(event.target.value as 'all' | 'active' | 'unsubscribed')}
+                      className="px-2.5 py-2 border border-stone-300 rounded-lg text-sm bg-white focus:outline-none focus:border-emerald-500"
+                      aria-label="Filtrar suscriptores"
+                    >
+                      <option value="active">Activos</option>
+                      <option value="unsubscribed">Dados de baja</option>
+                      <option value="all">Todos</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleExportNewsletter}
+                      disabled={newsletterSubscribers.length === 0}
+                      className="inline-flex items-center gap-2 px-3 py-2 border border-stone-300 rounded-lg text-sm text-stone-700 hover:border-emerald-500 hover:text-emerald-700 disabled:opacity-40"
+                      title="Exportar suscriptores"
+                    >
+                      <Download size={15} />
+                      Exportar
+                    </button>
+                  </div>
+                </div>
+                {newsletterLoading ? (
+                  <div className="flex items-center gap-2 py-4 text-sm text-stone-500">
+                    <Loader2 size={16} className="animate-spin" /> Cargando suscriptores...
+                  </div>
+                ) : newsletterSubscribers.filter((subscriber) => newsletterStatusFilter === 'all' || subscriber.status === newsletterStatusFilter).length === 0 ? (
+                  <p className="text-sm text-stone-500 py-3">No hay suscriptores en este filtro.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {newsletterSubscribers
+                      .filter((subscriber) => newsletterStatusFilter === 'all' || subscriber.status === newsletterStatusFilter)
+                      .map((subscriber) => (
+                        <div key={subscriber.id} className="flex flex-col gap-2 border border-stone-200 rounded-lg p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-stone-900 truncate">{subscriber.email}</p>
+                            <p className="text-xs text-stone-500">{new Date(subscriber.subscribed_at).toLocaleDateString('es-ES')} · {subscriber.source}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleNewsletterStatusChange(subscriber)}
+                            className={`self-end sm:self-center px-2.5 py-1.5 rounded-lg border text-xs font-medium ${subscriber.status === 'active'
+                              ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+                              : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+                          >
+                            {subscriber.status === 'active' ? 'Dar de baja' : 'Reactivar'}
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             )}
 

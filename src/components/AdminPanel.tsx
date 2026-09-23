@@ -575,72 +575,10 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             <LockKeyhole size={24} />
           </div>
           <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 mb-2">Viento Sur</p>
-          <h1 className="font-serif text-2xl font-bold text-stone-900 mb-2">{showRegister ? 'Crear cuenta editorial' : 'Acceso editorial'}</h1>
-          <p className="text-sm text-stone-500 mb-6">
-            {showRegister
-              ? 'Los usuarios nuevos se registran como editores. El rol de administrador se asigna de forma controlada.'
-              : 'Inicia sesión para gestionar las noticias del sitio.'}
-          </p>
+          <h1 className="font-serif text-2xl font-bold text-stone-900 mb-2">Acceso editorial</h1>
+          <p className="text-sm text-stone-500 mb-6">Inicia sesión para gestionar las noticias del sitio.</p>
           {authError && <p className="px-3 py-2 mb-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">{authError}</p>}
-          {registerSuccess && <p className="px-3 py-2 mb-4 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">{registerSuccess}</p>}
-
-          {showRegister ? (
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Correo electrónico</label>
-                <input
-                  type="email"
-                  value={registerForm.email}
-                  onChange={(e) => setRegisterForm((current) => ({ ...current, email: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Contraseña</label>
-                <input
-                  type="password"
-                  value={registerForm.password}
-                  onChange={(e) => setRegisterForm((current) => ({ ...current, password: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Nombre completo</label>
-                <input
-                  type="text"
-                  value={registerForm.fullName}
-                  onChange={(e) => setRegisterForm((current) => ({ ...current, fullName: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Nombre del autor</label>
-                <input
-                  type="text"
-                  value={registerForm.authorName}
-                  onChange={(e) => setRegisterForm((current) => ({ ...current, authorName: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
-                  placeholder="Ej: Ana López"
-                  required
-                />
-              </div>
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                Los nuevos registros se crean como editores. El rol de administrador debe asignarlo un usuario ya autorizado desde Supabase.
-              </div>
-              <button
-                type="submit"
-                disabled={registering}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-              >
-                {registering && <Loader2 size={16} className="animate-spin" />}
-                Crear cuenta
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-stone-700 mb-1">Correo electrónico</label>
                 <input
@@ -669,20 +607,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 {loggingIn && <Loader2 size={16} className="animate-spin" />}
                 Entrar al panel
               </button>
-            </form>
-          )}
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowRegister((value) => !value);
-              setAuthError(null);
-              setRegisterSuccess(null);
-            }}
-            className="w-full mt-4 text-sm text-stone-500 hover:text-emerald-700"
-          >
-            {showRegister ? 'Ya tengo cuenta. Iniciar sesión' : 'Crear una cuenta editorial'}
-          </button>
+          </form>
           <button onClick={onBack} className="w-full mt-2 text-sm text-stone-500 hover:text-emerald-700">Volver al sitio público</button>
         </div>
       </div>
@@ -727,6 +652,20 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 title="Importar desde Blogger"
               >
                 <Upload size={18} />
+              </button>
+            )}
+            {canManageAll && (
+              <button
+                onClick={() => {
+                  setShowRegister(true);
+                  setAuthError(null);
+                  setRegisterSuccess(null);
+                }}
+                className="p-2.5 bg-stone-700 hover:bg-stone-600 rounded-lg transition-colors"
+                aria-label="Crear usuario editorial"
+                title="Crear usuario editorial"
+              >
+                <Plus size={18} />
               </button>
             )}
             <button
@@ -1122,6 +1061,93 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           onClose={() => setShowImport(false)}
           onImported={fetchArticles}
         />
+      )}
+
+      {showRegister && canManageAll && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 overflow-y-auto p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
+              <div>
+                <h2 className="font-serif text-lg font-bold text-stone-900">Crear usuario editorial</h2>
+                <p className="text-xs text-stone-500 mt-1">Los nuevos usuarios se crean como editores.</p>
+              </div>
+              <button
+                onClick={() => setShowRegister(false)}
+                className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-lg"
+                aria-label="Cerrar"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleRegister} className="px-6 py-5 space-y-4">
+              {authError && <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{authError}</div>}
+              {registerSuccess && <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">{registerSuccess}</div>}
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Correo electrónico</label>
+                <input
+                  type="email"
+                  value={registerForm.email}
+                  onChange={(e) => setRegisterForm((current) => ({ ...current, email: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Contraseña temporal</label>
+                <input
+                  type="password"
+                  value={registerForm.password}
+                  onChange={(e) => setRegisterForm((current) => ({ ...current, password: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">Nombre completo</label>
+                  <input
+                    type="text"
+                    value={registerForm.fullName}
+                    onChange={(e) => setRegisterForm((current) => ({ ...current, fullName: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">Nombre de autor</label>
+                  <input
+                    type="text"
+                    value={registerForm.authorName}
+                    onChange={(e) => setRegisterForm((current) => ({ ...current, authorName: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                    placeholder="Ej: Ana López"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                El usuario se registra como editor. Puedes cambiar su rol desde “Usuarios del sitio”.
+              </div>
+              <div className="flex justify-end gap-3 pt-2 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setShowRegister(false)}
+                  className="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-lg"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={registering}
+                  className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
+                >
+                  {registering && <Loader2 size={16} className="animate-spin" />}
+                  Crear editor
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {showAuthorForm && (

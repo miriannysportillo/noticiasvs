@@ -130,6 +130,10 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [newsletterSubscribers, setNewsletterSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [newsletterStatusFilter, setNewsletterStatusFilter] = useState<'all' | 'active' | 'unsubscribed'>('active');
   const [newsletterLoading, setNewsletterLoading] = useState(false);
+  const [newsletterSubject, setNewsletterSubject] = useState('');
+  const [newsletterContent, setNewsletterContent] = useState('');
+  const [newsletterSending, setNewsletterSending] = useState(false);
+  const [newsletterSendMessage, setNewsletterSendMessage] = useState<string | null>(null);
 
   const currentRole = getCurrentRole(session);
   const currentAuthorName = getCurrentAuthorName(session);
@@ -632,6 +636,29 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     URL.revokeObjectURL(url);
   };
 
+  const handleSendNewsletter = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setNewsletterSendMessage(null);
+    setNewsletterSending(true);
+
+    const { data, error } = await supabase.functions.invoke('send-newsletter', {
+      body: {
+        subject: newsletterSubject,
+        content: newsletterContent,
+      },
+    });
+
+    setNewsletterSending(false);
+    if (error || data?.error) {
+      setNewsletterSendMessage(error?.message || data?.error || 'No se pudo enviar el boletín.');
+      return;
+    }
+
+    setNewsletterSubject('');
+    setNewsletterContent('');
+    setNewsletterSendMessage(`Boletín enviado a ${data.sent} suscriptor${data.sent === 1 ? '' : 'es'}.`);
+  };
+
   const visibleArticles = [...articles]
     .filter((article) => canManageAll || article.author === currentAuthorName)
     .filter((article) => statusFilter === 'all' || article.status === statusFilter)
@@ -985,6 +1012,50 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                       ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {canManageAll && (
+              <div className="mb-6 rounded-2xl border border-stone-200 bg-white p-4">
+                <div className="mb-4">
+                  <h2 className="font-serif text-lg font-bold text-stone-900">Enviar boletín</h2>
+                  <p className="text-xs text-stone-500 mt-1">El mensaje se enviará únicamente a suscriptores activos.</p>
+                </div>
+                <form onSubmit={handleSendNewsletter} className="space-y-3">
+                  <input
+                    type="text"
+                    value={newsletterSubject}
+                    onChange={(event) => setNewsletterSubject(event.target.value)}
+                    placeholder="Asunto del boletín"
+                    maxLength={160}
+                    className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                  <textarea
+                    value={newsletterContent}
+                    onChange={(event) => setNewsletterContent(event.target.value)}
+                    placeholder="Escribe el contenido. Cada línea se convertirá en un párrafo."
+                    maxLength={10000}
+                    rows={6}
+                    className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm resize-y focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                  {newsletterSendMessage && (
+                    <p className={`text-sm ${newsletterSendMessage.startsWith('Boletín enviado') ? 'text-emerald-700' : 'text-red-700'}`} role="status">
+                      {newsletterSendMessage}
+                    </p>
+                  )}
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={newsletterSending}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+                    >
+                      {newsletterSending && <Loader2 size={16} className="animate-spin" />}
+                      Enviar boletín
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
 

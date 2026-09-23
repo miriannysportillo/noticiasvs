@@ -20,6 +20,19 @@ La aplicación se conecta al proyecto Supabase indicado en las variables de ento
 	- `supabase/migrations/20260923010000_create_newsletter_subscribers.sql`
 	- `supabase/migrations/20260923020000_harden_editorial_permissions.sql`
 	- `supabase/migrations/20260923030000_newsletter_admin_tools.sql`
+
+## Envío del boletín
+
+El panel incluye un compositor para enviar boletines a suscriptores activos mediante Resend.
+
+1. Crea y verifica un dominio o remitente en [Resend](https://resend.com).
+2. Configura estos secretos en Supabase Edge Functions:
+	- `RESEND_API_KEY`
+	- `NEWSLETTER_FROM_EMAIL` (por ejemplo, `Viento Sur <boletin@tudominio.com>`)
+3. Despliega `supabase/functions/send-newsletter/index.ts` como la función `send-newsletter`.
+4. Ejecuta también la migración `supabase/migrations/20260923030000_newsletter_admin_tools.sql`.
+
+La función valida la sesión y permite enviar únicamente a administradores. Nunca coloques `RESEND_API_KEY` en `.env` del frontend.
 6. Crea el usuario editor en **Authentication > Users > Add user**.
 
 El archivo `.env` está excluido de Git y nunca debe subirse al repositorio. La conexión del repositorio GitHub se mantiene en `origin`; Supabase y GitHub son servicios separados. El botón **Open in Bolt** solo abre el proyecto en Bolt y no determina la cuenta Supabase utilizada.

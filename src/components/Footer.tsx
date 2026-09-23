@@ -1,5 +1,6 @@
 import { Wind, Facebook, Instagram, Youtube, Music2, Mail, Send, Settings } from 'lucide-react';
 import { CATEGORIES } from '@/lib/categories';
+import NewsletterSignup from '@/components/NewsletterSignup';
 
 type FooterProps = {
   onNavigateHome: () => void;
@@ -102,20 +103,7 @@ export default function Footer({ onNavigateHome, onNavigateCategory, onNavigateA
             <p className="text-sm text-stone-400 mb-3">
               Las noticias que importan, cada mañana en tu correo.
             </p>
-            <form onSubmit={(e) => e.preventDefault()} className="flex gap-2">
-              <input
-                type="email"
-                placeholder="tu@email.com"
-                className="flex-1 px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-white placeholder:text-stone-500 text-sm focus:outline-none focus:border-emerald-500"
-              />
-              <button
-                type="submit"
-                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
-                aria-label="Suscribir"
-              >
-                <Send size={16} />
-              </button>
-            </form>
+            <NewsletterSignup variant="footer" />
           </div>
         </div>
 

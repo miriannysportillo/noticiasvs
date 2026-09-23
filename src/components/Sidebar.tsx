@@ -1,6 +1,7 @@
 import { TrendingUp, Mail, Clock } from 'lucide-react';
 import type { Article } from '@/lib/supabase';
 import { formatRelative } from '@/lib/utils';
+import NewsletterSignup from '@/components/NewsletterSignup';
 
 type SidebarProps = {
   trending: Article[];
@@ -49,19 +50,7 @@ export default function Sidebar({ trending, onArticleClick }: SidebarProps) {
         <p className="text-sm text-stone-300 mb-4 leading-relaxed">
           Recibe cada mañana un resumen de las noticias más importantes, directamente en tu correo.
         </p>
-        <form onSubmit={(e) => e.preventDefault()} className="space-y-3">
-          <input
-            type="email"
-            placeholder="tu@email.com"
-            className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-stone-400 text-sm focus:outline-none focus:border-emerald-400 focus:bg-white/15 transition-colors"
-          />
-          <button
-            type="submit"
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg transition-colors"
-          >
-            Suscribirme gratis
-          </button>
-        </form>
+        <NewsletterSignup variant="sidebar" />
         <p className="text-xs text-stone-400 mt-3 text-center">
           Sin spam. Cancela cuando quieras.
         </p>

@@ -64,7 +64,8 @@ BEGIN
   metadata := metadata || jsonb_build_object('role', target_role);
 
   UPDATE auth.users
-  SET raw_user_meta_data = metadata
+  SET raw_user_meta_data = metadata,
+      raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object('role', target_role)
   WHERE id = target_user_id;
 END;
 $$;

@@ -116,6 +116,8 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [adminUsers, setAdminUsers] = useState<Array<{ id: string; email: string; role: string; full_name: string; author_name: string }>>([]);
   const [userManagementBusy, setUserManagementBusy] = useState(false);
+  const [userManagementMessage, setUserManagementMessage] = useState<string | null>(null);
+  const [userActionEmail, setUserActionEmail] = useState<string | null>(null);
 
   const currentRole = getCurrentRole(session);
   const currentAuthorName = getCurrentAuthorName(session);
@@ -506,23 +508,35 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   };
 
   const handleUserRoleChange = async (email: string, nextRole: 'admin' | 'editor') => {
-    if (!canManageAll) {
+    if (!canManageAll || email === session?.user?.email) {
+      if (email === session?.user?.email) {
+        setUserManagementMessage('No puedes cambiar tu propio rol desde este panel.');
+      }
       return;
     }
 
+    const roleLabel = nextRole === 'admin' ? 'administrador' : 'editor';
+    if (!confirm(`¿Cambiar el rol de ${email} a ${roleLabel}?`)) {
+      return;
+    }
+
+    setUserManagementMessage(null);
+    setUserActionEmail(email);
     setUserManagementBusy(true);
     const { error } = await supabase.rpc('set_user_role', {
       target_email: email,
       target_role: nextRole,
     });
     setUserManagementBusy(false);
+    setUserActionEmail(null);
 
     if (error) {
-      alert(error.message || 'No se pudo cambiar el rol del usuario.');
+      setUserManagementMessage(error.message || 'No se pudo cambiar el rol del usuario.');
       return;
     }
 
     await fetchAdminUsers();
+    setUserManagementMessage(`El usuario ${email} ahora es ${roleLabel}.`);
   };
 
   const handleDeleteEditor = async (email: string) => {
@@ -534,18 +548,22 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       return;
     }
 
+    setUserManagementMessage(null);
+    setUserActionEmail(email);
     setUserManagementBusy(true);
     const { error } = await supabase.rpc('delete_user_by_email', {
       target_email: email,
     });
     setUserManagementBusy(false);
+    setUserActionEmail(null);
 
     if (error) {
-      alert(error.message || 'No se pudo eliminar al usuario.');
+      setUserManagementMessage(error.message || 'No se pudo eliminar al usuario.');
       return;
     }
 
     await fetchAdminUsers();
+    setUserManagementMessage(`El usuario ${email} fue eliminado.`);
   };
 
   const visibleArticles = [...articles]
@@ -795,7 +813,12 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                   <span className="text-xs text-stone-500">Administra roles y accesos</span>
                 </div>
                 {userManagementBusy && (
-                  <div className="mb-3 text-xs text-amber-700">Actualizando permisos…</div>
+                  <div className="mb-3 text-xs text-amber-700">Actualizando permisos de {userActionEmail}…</div>
+                )}
+                {userManagementMessage && (
+                  <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                    {userManagementMessage}
+                  </div>
                 )}
                 <div className="space-y-3">
                   {adminUsers.length === 0 ? (
@@ -805,25 +828,27 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                       <div className="min-w-0">
                         <p className="font-medium text-stone-900 truncate">{user.full_name || user.author_name || user.email}</p>
                         <p className="text-xs text-stone-500 truncate">{user.email}</p>
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mt-1">
-                          {user.role}{user.id === session.user.id ? ' · Tu cuenta' : ''}
-                        </p>
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mt-1">{user.role}</p>
                       </div>
                       <div className="flex items-center gap-2 self-end sm:self-center">
-                        <select
-                          value={user.role === 'admin' ? 'admin' : 'editor'}
-                          onChange={(event) => handleUserRoleChange(user.email, event.target.value as 'admin' | 'editor')}
-                          disabled={user.id === session.user.id || userManagementBusy}
-                          className="px-2 py-1.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500 bg-white"
-                          aria-label={`Cambiar rol para ${user.email}`}
-                        >
-                          <option value="editor">Editor</option>
-                          <option value="admin">Administrador</option>
-                        </select>
+                        {user.email === session.user.email ? (
+                          <span className="text-xs text-stone-400">Sesión actual</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleUserRoleChange(user.email, user.role === 'admin' ? 'editor' : 'admin')}
+                            disabled={userManagementBusy}
+                            className={`px-2.5 py-1.5 rounded-lg border text-sm disabled:opacity-50 ${user.role === 'admin'
+                              ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                              : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`}
+                          >
+                            {user.role === 'admin' ? 'Dejar como editor' : 'Nombrar administrador'}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleDeleteEditor(user.email)}
-                          disabled={user.id === session.user.id || userManagementBusy}
+                          disabled={userManagementBusy || user.email === session.user.email}
                           className="px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm hover:bg-red-100"
                         >
                           Eliminar

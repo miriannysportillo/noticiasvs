@@ -1,0 +1,764 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<!DOCTYPE html>
+<html b:version='2' class='v2' expr:dir='data:blog.languageDirection' xmlns='http://www.w3.org/1999/xhtml' xmlns:b='http://www.google.com/2005/gml/b' xmlns:data='http://www.google.com/2005/gml/data' xmlns:expr='http://www.google.com/2005/gml/expr'>
+<head>
+  <meta content='width=device-width, initial-scale=1' name='viewport' />
+  <b:include data='blog' name='all-head-content' />
+  <title><data:blog.pageTitle /></title>
+  <link href='https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Playfair+Display:wght@600;700&amp;display=swap' rel='stylesheet' />
+  <b:skin><![CDATA[
+    :root {
+      --ink: #292524;
+      --muted: #78716c;
+      --paper: #ffffff;
+      --wash: #fafaf9;
+      --line: #e7e5e4;
+      --green: #047857;
+      --green-dark: #064e3b;
+      --green-pale: #ecfdf5;
+      --amber: #d97706;
+      --serif: 'Playfair Display', Georgia, serif;
+      --sans: 'DM Sans', Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    img { max-width: 100%; height: auto; }
+    a { color: inherit; text-decoration: none; }
+    button, input { font: inherit; }
+    .wrap { width: min(1280px, calc(100% - 32px)); margin: 0 auto; }
+    .skip-link {
+      position: absolute; left: -9999px; top: 8px; z-index: 100;
+      padding: 10px 14px; color: white; background: var(--green-dark);
+    }
+    .skip-link:focus { left: 12px; }
+    .topline { color: #d6d3d1; background: #1c1917; font-size: 12px; }
+    .topline-inner { min-height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .topline-right { display: flex; align-items: center; gap: 18px; }
+    .live { color: #6ee7b7; font-weight: 700; letter-spacing: .08em; }
+    .site-header { position: sticky; top: 0; z-index: 50; }
+    .menu-toggle { display: none; }
+    .masthead { background: rgba(255,255,255,.97); border-bottom: 1px solid var(--line); }
+    .brand-row { min-height: 88px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      width: 46px; height: 46px; flex: 0 0 46px; display: grid; place-items: center;
+      border-radius: 50%; color: white; background: linear-gradient(140deg, #10b981, #065f46);
+      font-family: var(--serif); font-size: 19px; font-weight: 700;
+    }
+    .brand-mark svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+    .brand-name { display: block; font: 700 25px/1.05 var(--serif); color: #1c1917; }
+    .brand-tag { display: block; margin-top: 5px; color: var(--green); font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+    .search-form { display: flex; width: min(290px, 35vw); }
+    .search-form input {
+      width: 100%; min-width: 0; padding: 9px 12px; border: 1px solid #d6d3d1;
+      border-right: 0; border-radius: 5px 0 0 5px; color: var(--ink); background: white;
+    }
+    .search-form button { padding: 8px 13px; border: 0; border-radius: 0 5px 5px 0; color: white; background: var(--green); cursor: pointer; }
+    .search-form button:hover { background: var(--green-dark); }
+    .nav-shell { border-top: 1px solid #f5f5f4; }
+    .nav-inner { display: flex; align-items: center; gap: 3px; min-height: 48px; overflow-x: auto; }
+    .nav-inner { -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .nav-inner::-webkit-scrollbar { display: none; }
+    .nav-inner a { flex: 0 0 auto; padding: 9px 12px; border-radius: 5px; color: #44403c; font-size: 13px; font-weight: 600; }
+    .nav-inner a:hover, .nav-inner a:focus { color: var(--green); background: var(--green-pale); }
+    .page-wrap { padding-top: 24px; }
+    .breaking-strip { overflow: hidden; color: white; background: #059669; }
+    .breaking-inner { min-height: 42px; display: flex; align-items: center; gap: 14px; }
+    .breaking-label { flex: 0 0 auto; padding: 3px 9px; border-radius: 3px; color: var(--green-dark); background: white; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .breaking-window { min-width: 0; overflow: hidden; flex: 1; }
+    .breaking-track { display: flex; width: max-content; animation: breaking-scroll 36s linear infinite; }
+    .breaking-group { display: flex; align-items: center; flex: 0 0 auto; }
+    .breaking-group a { flex: 0 0 auto; color: white; font-size: 13px; white-space: nowrap; }
+    .breaking-group a:before { content: '•'; margin: 0 12px; color: #a7f3d0; }
+    .breaking-strip:hover .breaking-track { animation-play-state: paused; }
+    @keyframes breaking-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .featured-area { display: grid; grid-template-columns: minmax(0, 2fr) minmax(270px, 1fr); gap: 24px; margin-bottom: 30px; }
+    .featured-area .widget { margin: 0; }
+    .feature-hero { position: relative; min-height: 0; aspect-ratio: 16 / 10; overflow: hidden; display: flex; align-items: flex-end; border-radius: 12px; color: white; background: #292524; }
+    .feature-hero-image { position: absolute; inset: 0; display: block; }
+    .feature-hero-image img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .7s ease; }
+    .feature-hero:hover .feature-hero-image img { transform: scale(1.05); }
+    .feature-hero-placeholder { display: grid; width: 100%; height: 100%; place-items: center; color: white; background: #292524; font: 700 28px var(--serif); }
+    .feature-hero-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,.4) 48%, transparent 100%); }
+    .feature-hero-content { position: relative; z-index: 1; width: 100%; padding: 24px; }
+    .feature-hero-category { display: inline-block; margin-bottom: 12px; padding: 4px 12px; border-radius: 999px; color: white; background: #059669; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+    .feature-hero-title { margin: 0 0 8px; color: white; font: 700 24px/1.2 var(--serif); }
+    .feature-hero:hover .feature-hero-title { color: #a7f3d0; }
+    .feature-hero-snippet { display: -webkit-box; overflow: hidden; max-width: 680px; margin: 0 0 12px; color: #e7e5e4; font-size: 14px; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+    .feature-hero-meta { display: flex; align-items: center; gap: 12px; color: #d6d3d1; font-size: 12px; }
+    .feature-hero-author { color: white; font-weight: 500; }
+    .feature-hero-date { display: inline-flex; align-items: center; gap: 5px; }
+    .feature-hero-clock { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    @media (min-width: 1024px) {
+      .feature-hero { aspect-ratio: 16 / 9; }
+      .feature-hero-content { padding: 32px; }
+      .feature-hero-title { font-size: 36px; }
+      .feature-hero-snippet { font-size: 16px; }
+    }
+    @media (max-width: 1023px) {
+      .featured-area { grid-template-columns: minmax(0, 1fr); }
+      .content-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+      .sidebar { position: static; }
+      #HTML3 .feature-side-list { height: auto; }
+      #HTML3 .feature-side-item { min-height: 120px; flex: 0 0 auto; }
+    }
+    body.item-view .featured-area { display: none; }
+    #HTML4 { min-width: 0; }
+    #HTML4 .title { display: none; }
+    #HTML4 .widget-content { height: 100%; }
+    #HTML3 { min-width: 0; }
+    #HTML3 .title { display: none; }
+    #HTML3 .widget-content { height: 100%; }
+    #HTML3 .feature-side-list { height: 100%; display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+    #HTML3 .feature-side-item { min-height: 0; flex: 1 1 0; display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: start; gap: 12px; overflow: hidden; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: white; }
+    #HTML3 .feature-side-image { display: block; width: 96px; height: 96px; overflow: hidden; border-radius: 7px; background: #e7e5e4; }
+    #HTML3 .feature-side-image img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .4s ease; }
+    #HTML3 .feature-side-image:hover img { transform: scale(1.05); }
+    #HTML3 .feature-side-copy { min-width: 0; }
+    #HTML3 .feature-side-category { display: block; margin-bottom: 4px; color: var(--green); font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    #HTML3 .feature-side-title { display: -webkit-box; overflow: hidden; color: #1c1917; font: 700 14px/1.35 var(--serif); -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+    #HTML3 .feature-side-title:hover { color: var(--green); }
+    #HTML3 .feature-side-date { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
+    .content-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 32px; align-items: start; }
+    .main-column { min-width: 0; }
+    .section-heading { display: flex; align-items: center; gap: 12px; margin: 0 0 22px; font: 700 26px/1.25 var(--serif); }
+    .section-heading:before { content: ''; width: 4px; height: 28px; flex: 0 0 4px; border-radius: 3px; background: var(--green); }
+    .main-area .widget { margin: 0; }
+    .blog-posts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    .blog-posts .post-outer, .blog-posts .post-outer-container { min-width: 0; margin: 0; padding: 0; border: 0; background: transparent; }
+    .post-card { height: 100%; overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: white; transition: box-shadow .2s ease, transform .2s ease; }
+    .post-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(28,25,23,.09); }
+    .post-card-image { position: relative; display: block; aspect-ratio: 16 / 10; overflow: hidden; background: #e7e5e4; }
+    .post-card-image img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease; }
+    .post-card:hover .post-card-image img { transform: scale(1.04); }
+    .post-card-placeholder { display: grid; width: 100%; height: 100%; place-items: center; color: var(--green-dark); background: var(--green-pale); font: 700 24px var(--serif); }
+    .post-card-category { position: absolute; top: 12px; left: 12px; padding: 4px 9px; border-radius: 999px; color: var(--green-dark); background: rgba(255,255,255,.94); font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .post-card-content { display: flex; flex: 1; flex-direction: column; padding: 15px 17px 16px; }
+    .post-card-title { margin: 0; color: #1c1917; font: 700 19px/1.25 var(--serif); }
+    .post-card-title a:hover { color: var(--green); }
+    .post-card-snippet { display: -webkit-box; overflow: hidden; margin: 9px 0 0; color: #57534e; font-size: 14px; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+    .post-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 13px; border-top: 1px solid #f5f5f4; color: var(--muted); font-size: 11px; }
+    .post-card-author { overflow: hidden; color: #44403c; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .post-card-date { flex: 0 0 auto; }
+    .item-view .blog-posts { grid-template-columns: minmax(0, 1fr); }
+    .item-view .blog-posts .post-outer, .item-view .blog-posts .post-outer-container { border: 0; }
+    .item-view .post-body { padding: 18px 0; color: #44403c; font-size: 17px; line-height: 1.8; }
+    .item-view .post-body img { max-width: 100%; height: auto; }
+    .item-view .post-title, .item-view .post-header, .item-view .post-footer { padding-right: 0; padding-left: 0; }
+    .item-view .post-title { font-size: 34px; }
+    .item-view .post-header { padding-top: 12px; }
+    .item-view .post-footer { padding-bottom: 20px; }
+    .post-labels { padding: 0; }
+    .post-labels a { display: inline-block; margin: 0 5px 5px 0; padding: 3px 8px; border-radius: 999px; color: var(--green-dark); background: var(--green-pale); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .sidebar { position: sticky; top: 150px; }
+    .sidebar .widget { margin: 0 0 24px; padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: white; }
+    .sidebar .title, .sidebar h2 { margin: 0 0 14px; padding-bottom: 9px; border-bottom: 1px solid var(--line); color: #1c1917; font: 700 18px/1.3 var(--serif); }
+    #HTML2 .most-read-heading { display: flex; align-items: center; gap: 9px; margin: 0 0 15px; padding-bottom: 11px; border-bottom: 1px solid var(--line); color: #1c1917; font: 700 18px/1.3 var(--serif); }
+    #HTML2 .most-read-icon { color: var(--green); font: 700 20px/1 var(--sans); }
+    #HTML2 .most-read-list { margin: 0; padding: 0; list-style: none; counter-reset: latest-post; }
+    #HTML2 .most-read-item { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 0 0 13px; margin: 0 0 13px; border-bottom: 1px solid #f5f5f4; }
+    #HTML2 .most-read-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+    #HTML2 .most-read-item:before { counter-increment: latest-post; content: counter(latest-post); color: rgba(4,120,87,.4); font: 700 25px/.95 var(--serif); }
+    #HTML2 .most-read-copy { min-width: 0; }
+    #HTML2 .most-read-title { color: #1c1917; font: 600 14px/1.35 var(--sans); }
+    #HTML2 .most-read-title:hover { color: var(--green); }
+    #HTML2 .most-read-date { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+    #HTML2 .most-read-empty { color: var(--muted); font-size: 13px; }
+    #HTML1 { border: 0; color: white; background: linear-gradient(140deg, #1c1917, #292524); }
+    #HTML1 .title { border-color: #44403c; color: white; }
+    #HTML1 .widget-content { color: #d6d3d1; font-size: 14px; }
+    #HTML1 .newsletter-mail { display: inline-flex; margin-top: 10px; padding: 9px 13px; border-radius: 6px; color: white; background: var(--green); font-size: 12px; font-weight: 700; }
+    #HTML1 .newsletter-note { margin: 13px 0 0; color: #a8a29e; font-size: 11px; text-align: center; }
+    .PopularPosts .item-thumbnail img { width: 78px; height: 78px; object-fit: cover; border-radius: 6px; }
+    .PopularPosts .item-title { color: #292524; font: 600 14px/1.35 var(--serif); }
+    .PopularPosts ul { margin: 0; padding: 0; list-style: none; }
+    .PopularPosts li { padding: 0 0 13px; margin: 0 0 13px; border-bottom: 1px solid #f5f5f4; }
+    .PopularPosts li:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+    .sidebar .Label ul { margin: 0; padding: 0; list-style: none; }
+    .sidebar .Label li { padding: 7px 0; border-bottom: 1px solid #f5f5f4; }
+    .sidebar .Label li:last-child { border-bottom: 0; }
+    .sidebar .Label a { color: #57534e; font-size: 13px; }
+    .sidebar .Label a:hover { color: var(--green); }
+    .blog-pager { display: flex; justify-content: space-between; gap: 12px; margin: 26px 0; }
+    .blog-pager a { padding: 9px 13px; border: 1px solid var(--line); border-radius: 5px; color: var(--green-dark); font-size: 13px; font-weight: 600; }
+    .blog-pager a:hover { border-color: var(--green); background: var(--green-pale); }
+    .quick-categories { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; padding: 28px 0 8px; }
+    .quick-categories a { padding: 8px 15px; border-radius: 999px; color: #57534e; background: #f5f5f4; font-size: 13px; font-weight: 600; }
+    .quick-categories a:hover { color: var(--green-dark); background: var(--green-pale); }
+    .site-footer { margin-top: 58px; padding: 36px 0 20px; color: #d6d3d1; background: #1c1917; }
+    .footer-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1.25fr; gap: 30px; align-items: start; }
+    .footer-brand { color: white; font: 700 21px var(--serif); }
+    .footer-copy { max-width: 520px; color: #a8a29e; font-size: 13px; }
+    .footer-social { display: flex; flex-wrap: wrap; gap: 8px 13px; margin-top: 14px; }
+    .footer-social a { color: #a8a29e; font-size: 12px; }
+    .footer-social a:hover { color: #6ee7b7; }
+    .footer-heading { margin: 0 0 12px; color: white; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .footer-list { margin: 0; padding: 0; list-style: none; }
+    .footer-list li { margin: 7px 0; }
+    .footer-list a { color: #a8a29e; font-size: 13px; }
+    .footer-list a:hover { color: #6ee7b7; }
+    .footer-newsletter { display: flex; gap: 7px; }
+    .footer-newsletter input { min-width: 0; width: 100%; padding: 8px 10px; border: 1px solid #44403c; border-radius: 5px; color: white; background: #292524; }
+    .footer-newsletter button { flex: 0 0 auto; padding: 8px 10px; border: 0; border-radius: 5px; color: white; background: var(--green); }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 10px 18px; justify-content: flex-end; }
+    .footer-links a { color: #d6d3d1; font-size: 13px; }
+    .footer-links a:hover { color: #6ee7b7; }
+    .footer-subscribe { display: inline-flex; margin-top: 5px; padding: 8px 11px; border-radius: 5px; color: white; background: var(--green); font-size: 12px; font-weight: 700; }
+    .footer-subscribe:hover { background: #059669; }
+    .copyright { margin-top: 25px; padding-top: 15px; border-top: 1px solid #44403c; color: #a8a29e; font-size: 11px; }
+    .widget { margin-bottom: 24px; }
+    .status-msg-wrap, .feed-links { color: var(--muted); font-size: 13px; }
+    @media (max-width: 900px) {
+      .blog-posts { gap: 15px; }
+    }
+    @media (max-width: 700px) {
+      .wrap { width: min(100% - 28px, 640px); }
+      .topline-inner { min-height: 30px; }
+      .topline-edition { display: none; }
+      .brand-row { min-height: 72px; flex-wrap: wrap; gap: 10px; padding-top: 12px; padding-bottom: 12px; }
+      .menu-toggle { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; color: #44403c; background: transparent; cursor: pointer; }
+      .menu-toggle:hover, .menu-toggle:focus-visible { color: var(--green); background: var(--green-pale); }
+      .menu-icon { display: flex; width: 22px; flex-direction: column; gap: 5px; }
+      .menu-line { display: block; width: 22px; height: 2px; border-radius: 2px; background: currentColor; transition: transform .2s ease, opacity .2s ease; }
+      .menu-toggle[aria-expanded='true'] .menu-line:first-child { transform: translateY(7px) rotate(45deg); }
+      .menu-toggle[aria-expanded='true'] .menu-line:nth-child(2) { opacity: 0; }
+      .menu-toggle[aria-expanded='true'] .menu-line:last-child { transform: translateY(-7px) rotate(-45deg); }
+      .site-header.menu-ready .nav-shell { display: none; }
+      .site-header.menu-ready.menu-open .nav-shell { display: block; }
+      .site-header.menu-open .nav-inner { align-items: stretch; flex-direction: column; gap: 2px; overflow: visible; padding-top: 8px; padding-bottom: 10px; }
+      .site-header.menu-open .nav-inner a { width: 100%; padding: 10px 12px; }
+      .brand-mark { width: 40px; height: 40px; flex-basis: 40px; }
+      .brand-name { font-size: 22px; }
+      .search-form { width: 100%; }
+      .nav-inner { min-height: 44px; }
+      .nav-inner a { padding-right: 10px; padding-left: 10px; font-size: 12px; }
+      .page-wrap { padding-top: 16px; }
+      .breaking-inner { min-height: 38px; }
+      .breaking-group a { font-size: 12px; }
+      .featured-area { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+      .feature-hero { min-height: 270px; }
+      .feature-hero-content { padding: 20px; }
+      .feature-hero-title { font-size: 23px; }
+      #HTML3 .feature-side-list { gap: 10px; }
+      #HTML3 .feature-side-item { min-height: 104px; flex: 0 0 auto; grid-template-columns: 84px minmax(0, 1fr); gap: 10px; padding: 10px; }
+      #HTML3 .feature-side-image { width: 84px; height: 84px; }
+      #HTML3 .feature-side-title { font-size: 13px; }
+      .content-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+      .blog-posts { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+      .sidebar { display: flex; flex-direction: column; gap: 16px; }
+      .sidebar .widget { margin: 0; padding: 16px; }
+      .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+      .footer-links { justify-content: flex-start; }
+    }
+    @media (max-width: 420px) {
+      .feature-hero { min-height: 280px; }
+      .feature-hero-content { padding: 18px; }
+      .feature-hero-title { font-size: 22px; }
+      .footer-grid { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *:before, *:after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  ]]></b:skin>
+</head>
+<body expr:class='data:view.isSingleItem ? &quot;item-view&quot; : &quot;index-view&quot;'>
+  <a class='skip-link' href='#main-content'>Saltar al contenido</a>
+  <header class='site-header'>
+    <div class='topline'>
+      <div class='wrap topline-inner'>
+        <span>Noticias Viento Sur</span>
+        <div class='topline-right'><span class='topline-edition'>Edición Digital</span><span class='live'>EN VIVO</span></div>
+      </div>
+    </div>
+    <div class='masthead'>
+      <div class='wrap brand-row'>
+        <button aria-controls='primary-nav' aria-expanded='false' aria-label='Abrir menú de categorías' class='menu-toggle' id='mobile-menu-toggle' type='button'>
+          <span aria-hidden='true' class='menu-icon'><span class='menu-line'></span><span class='menu-line'></span><span class='menu-line'></span></span>
+        </button>
+        <a class='brand' expr:href='data:blog.homepageUrl'>
+          <span aria-hidden='true' class='brand-mark'><svg viewBox='0 0 24 24'><path d='M3 8h13.5a2.5 2.5 0 1 0-2.45-3' /><path d='M2 12h16.5a2.5 2.5 0 1 1-2.45 3' /><path d='M4 16h6.5a2.5 2.5 0 1 1-2.45 3' /></svg></span>
+          <span><span class='brand-name'>Viento Sur</span><span class='brand-tag'>Noticias</span></span>
+        </a>
+        <form action='/search' class='search-form' method='get' role='search'>
+          <input aria-label='Buscar noticias' name='q' placeholder='Buscar noticias...' type='search' />
+          <button aria-label='Buscar' type='submit'>⌕</button>
+        </form>
+      </div>
+      <nav aria-label='Secciones' class='nav-shell'>
+        <div class='wrap nav-inner' id='primary-nav'>
+          <a expr:href='data:blog.homepageUrl'>Portada</a>
+          <a href='/search/label/Pol%C3%ADtica'>Política</a>
+          <a href='/search/label/Tecnolog%C3%ADa'>Tecnología</a>
+          <a href='/search/label/Deportes'>Deportes</a>
+          <a href='/search/label/Econom%C3%ADa'>Economía</a>
+          <a href='/search/label/Cultura'>Cultura</a>
+          <a href='/search/label/Medio%20Ambiente'>Medio Ambiente</a>
+          <a href='/search/label/Opini%C3%B3n'>Opinión</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <div class='breaking-strip'>
+    <div class='wrap breaking-inner'>
+      <span class='breaking-label'>Última Hora</span>
+      <div aria-label='Últimos titulares' class='breaking-window' role='region'>
+        <div class='breaking-track' id='breaking-track'>
+          <div class='breaking-group'><a expr:href='data:blog.homepageUrl'>Noticias, análisis y reportajes del sur del continente</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type='text/javascript'>
+  //<![CDATA[
+  document.addEventListener('DOMContentLoaded', function () {
+    var siteHeader = document.querySelector('.site-header');
+    var menuButton = document.getElementById('mobile-menu-toggle');
+    var categoryNav = document.getElementById('primary-nav');
+    function closeMobileMenu() {
+      if (!siteHeader || !menuButton) return;
+      siteHeader.classList.remove('menu-open');
+      menuButton.setAttribute('aria-expanded', 'false');
+      menuButton.setAttribute('aria-label', 'Abrir menú de categorías');
+    }
+    if (siteHeader && menuButton && categoryNav) {
+      siteHeader.classList.add('menu-ready');
+      menuButton.addEventListener('click', function () {
+        var isOpen = menuButton.getAttribute('aria-expanded') === 'true';
+        siteHeader.classList.toggle('menu-open', !isOpen);
+        menuButton.setAttribute('aria-expanded', String(!isOpen));
+        menuButton.setAttribute('aria-label', isOpen ? 'Abrir menú de categorías' : 'Cerrar menú de categorías');
+      });
+      categoryNav.addEventListener('click', function (event) {
+        var target = event.target;
+        while (target && target !== categoryNav && target.tagName !== 'A') target = target.parentNode;
+        if (target && target.tagName === 'A') closeMobileMenu();
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeMobileMenu();
+      });
+      window.addEventListener('resize', function () {
+        if (window.innerWidth > 700) closeMobileMenu();
+      });
+    }
+
+    var track = document.getElementById('breaking-track');
+    var latestList = document.getElementById('most-read-list');
+    var featureSideList = document.getElementById('feature-side-list');
+    var hero = document.getElementById('feature-hero');
+    var heroImage = document.getElementById('feature-hero-image');
+    var heroCategory = document.getElementById('feature-hero-category');
+    var heroTitle = document.getElementById('feature-hero-title');
+    var heroSnippet = document.getElementById('feature-hero-snippet');
+    var heroAuthor = document.getElementById('feature-hero-author');
+    var heroDate = document.getElementById('feature-hero-date');
+    function formatRelativeDate(value) {
+      if (!value) return '';
+      var date = new Date(value);
+      if (isNaN(date.getTime())) return '';
+      var minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+      if (minutes < 60) return 'hace ' + minutes + ' min';
+      var hours = Math.floor(minutes / 60);
+      if (hours < 24) return 'hace ' + hours + ' h';
+      var days = Math.floor(hours / 24);
+      if (days < 7) return 'hace ' + days + ' d';
+      return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    if ((!track && !latestList && !featureSideList && !hero) || !window.fetch) return;
+    function showListMessage(message) {
+      if (!latestList) return;
+      var item = document.createElement('li');
+      item.className = 'most-read-empty';
+      item.textContent = message;
+      latestList.replaceChildren(item);
+    }
+    function showFeatureMessage(message) {
+      if (!featureSideList) return;
+      var item = document.createElement('li');
+      item.className = 'most-read-empty';
+      item.textContent = message;
+      featureSideList.replaceChildren(item);
+    }
+    function showHeroMessage(message) {
+      if (!heroTitle) return;
+      heroTitle.textContent = message;
+      if (heroSnippet) heroSnippet.textContent = '';
+    }
+    function normalizePostUrl(value) {
+      var url = new URL(value, window.location.href);
+      return url.origin + url.pathname.replace(/\/$/, '');
+    }
+    function getEntryImage(entry) {
+      var html = (entry.content && entry.content.$t) || (entry.summary && entry.summary.$t) || '';
+      if (html && window.DOMParser) {
+        var parsed = new DOMParser().parseFromString(html, 'text/html');
+        var image = parsed.querySelector('img');
+        if (image) {
+          var source = image.getAttribute('src') || image.getAttribute('data-src');
+          if (source) return source;
+        }
+      }
+      var thumbnail = entry['media$thumbnail'];
+      return thumbnail && thumbnail.url ? thumbnail.url.replace(/\/s\d+(-c)?\//, '/s1600/').replace(/=s\d+(-c)?$/, '=s1600') : '';
+    }
+    function getEntryText(entry) {
+      var html = (entry.summary && entry.summary.$t) || (entry.content && entry.content.$t) || '';
+      if (!html || !window.DOMParser) return '';
+      return new DOMParser().parseFromString(html, 'text/html').body.textContent.replace(/\s+/g, ' ').trim();
+    }
+    function populateHero(entry) {
+      if (!hero || !entry) return;
+      var link = (entry.link || []).find(function (item) { return item.rel === 'alternate'; });
+      if (link) hero.href = link.href;
+      if (heroTitle) heroTitle.textContent = (entry.title && entry.title.$t) || '';
+      if (heroSnippet) heroSnippet.textContent = getEntryText(entry);
+      var imageUrl = getEntryImage(entry);
+      if (heroImage) {
+        if (imageUrl) {
+          var image = document.createElement('img');
+          image.src = imageUrl;
+          image.alt = '';
+          image.fetchPriority = 'high';
+          heroImage.replaceChildren(image);
+        } else {
+          var imageFallback = document.createElement('span');
+          imageFallback.className = 'feature-hero-placeholder';
+          imageFallback.textContent = 'Viento Sur';
+          heroImage.replaceChildren(imageFallback);
+        }
+      }
+      var labels = entry.category || [];
+      var category = labels.length ? labels[labels.length - 1].term : '';
+      if (heroCategory) {
+        heroCategory.textContent = category;
+        heroCategory.style.display = category ? 'inline-block' : 'none';
+      }
+      var author = entry.author && entry.author.length && entry.author[0].name ? entry.author[0].name.$t : '';
+      if (heroAuthor) heroAuthor.textContent = author;
+      var published = (entry.published || entry.updated || {}).$t;
+      var relativeDate = formatRelativeDate(published);
+      if (heroDate) {
+        heroDate.dateTime = published || '';
+        var dateLabel = heroDate.querySelector('.feature-hero-relative');
+        if (dateLabel) dateLabel.textContent = relativeDate;
+      }
+    }
+    fetch('/feeds/posts/default?alt=json&max-results=20')
+      .then(function (response) { if (!response.ok) throw new Error('Feed no disponible'); return response.json(); })
+      .then(function (feed) {
+        var entries = feed.feed && feed.feed.entry ? feed.feed.entry.slice() : [];
+        entries.sort(function (left, right) {
+          var leftDate = new Date((left.published || left.updated || {}).$t || 0).getTime();
+          var rightDate = new Date((right.published || right.updated || {}).$t || 0).getTime();
+          return rightDate - leftDate;
+        });
+        if (!entries.length) {
+          showListMessage('Aún no hay entradas publicadas.');
+          showFeatureMessage('Aún no hay noticias recientes.');
+          showHeroMessage('Aún no hay noticias publicadas.');
+          return;
+        }
+        var recentEntries = entries.slice(0, 5);
+        var heroEntry = recentEntries[0];
+        var sideEntries = recentEntries.slice(1, 4);
+        populateHero(heroEntry);
+        if (document.querySelector('.post-card-image')) {
+          entries.forEach(function (entry) {
+            var alternate = (entry.link || []).find(function (item) { return item.rel === 'alternate'; });
+            var imageUrl = getEntryImage(entry);
+            if (!alternate || !imageUrl) return;
+            var card = Array.from(document.querySelectorAll('.post-card-image')).find(function (element) {
+              return normalizePostUrl(element.href) === normalizePostUrl(alternate.href);
+            });
+            if (!card) return;
+            var image = card.querySelector('img');
+            if (!image) {
+              image = document.createElement('img');
+              image.loading = 'lazy';
+              image.alt = (entry.title && entry.title.$t) || '';
+              card.replaceChildren(image);
+            }
+            image.src = imageUrl;
+          });
+        }
+        var group = document.createElement('div');
+        group.className = 'breaking-group';
+        var listItems = document.createDocumentFragment();
+        var featureItems = document.createDocumentFragment();
+        recentEntries.forEach(function (entry) {
+          var link = (entry.link || []).find(function (item) { return item.rel === 'alternate'; });
+          if (!link || !entry.title) return;
+          if (track) {
+            var tickerLink = document.createElement('a');
+            tickerLink.href = link.href;
+            tickerLink.textContent = entry.title.$t;
+            group.appendChild(tickerLink);
+          }
+          if (latestList) {
+            var item = document.createElement('li');
+            item.className = 'most-read-item';
+            var copy = document.createElement('div');
+            copy.className = 'most-read-copy';
+            var title = document.createElement('a');
+            title.className = 'most-read-title';
+            title.href = link.href;
+            title.textContent = entry.title.$t;
+            copy.appendChild(title);
+            var rawDate = entry.published && entry.published.$t;
+            if (rawDate) {
+              var parsedDate = new Date(rawDate);
+              if (!isNaN(parsedDate.getTime())) {
+                var date = document.createElement('time');
+                date.className = 'most-read-date';
+                date.dateTime = parsedDate.toISOString();
+                date.textContent = parsedDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+                copy.appendChild(date);
+              }
+            }
+            item.appendChild(copy);
+            listItems.appendChild(item);
+          }
+        });
+        sideEntries.forEach(function (entry) {
+          var link = (entry.link || []).find(function (item) { return item.rel === 'alternate'; });
+          if (!link || !entry.title) return;
+
+          var item = document.createElement('li');
+          item.className = 'feature-side-item';
+          var imageLink = document.createElement('a');
+          imageLink.className = 'feature-side-image';
+          imageLink.href = link.href;
+          var imageUrl = getEntryImage(entry);
+          if (imageUrl) {
+            var image = document.createElement('img');
+            image.src = imageUrl;
+            image.alt = '';
+            image.loading = 'lazy';
+            imageLink.appendChild(image);
+          } else {
+            var imageFallback = document.createElement('span');
+            imageFallback.className = 'post-card-placeholder';
+            imageFallback.textContent = 'VS';
+            imageLink.appendChild(imageFallback);
+          }
+
+          var copy = document.createElement('div');
+          copy.className = 'feature-side-copy';
+          var category = entry.category && entry.category.length ? entry.category[entry.category.length - 1].term : '';
+          if (category) {
+            var categoryLabel = document.createElement('span');
+            categoryLabel.className = 'feature-side-category';
+            categoryLabel.textContent = category;
+            copy.appendChild(categoryLabel);
+          }
+
+          var title = document.createElement('a');
+          title.className = 'feature-side-title';
+          title.href = link.href;
+          title.textContent = entry.title.$t;
+          copy.appendChild(title);
+
+          var rawDate = (entry.published || entry.updated || {}).$t;
+          if (rawDate) {
+            var parsedDate = new Date(rawDate);
+            if (!isNaN(parsedDate.getTime())) {
+              var date = document.createElement('time');
+              date.className = 'feature-side-date';
+              date.dateTime = parsedDate.toISOString();
+              date.textContent = formatRelativeDate(parsedDate.toISOString());
+              copy.appendChild(date);
+            }
+          }
+
+          item.appendChild(imageLink);
+          item.appendChild(copy);
+          featureItems.appendChild(item);
+        });
+        if (track && group.children.length) {
+          var duplicate = group.cloneNode(true);
+          duplicate.setAttribute('aria-hidden', 'true');
+          track.replaceChildren(group, duplicate);
+        }
+        if (latestList && listItems.childNodes.length) latestList.replaceChildren(listItems);
+        if (featureSideList && featureItems.childNodes.length) featureSideList.replaceChildren(featureItems);
+        else showFeatureMessage('No hay suficientes noticias para la portada.');
+      })
+      .catch(function () {
+        showListMessage('No se pudieron cargar las últimas entradas.');
+        showFeatureMessage('No se pudieron cargar las noticias recientes.');
+        showHeroMessage('No se pudo cargar la noticia destacada.');
+      });
+  });
+  //]]>
+  </script>
+
+  <div class='wrap page-wrap'>
+    <b:if cond='data:view.isHomepage'>
+      <b:section class='featured-area' id='featured' maxwidgets='2' name='Portada destacada' showaddelement='yes'>
+        <b:widget id='HTML4' locked='false' title='Noticia destacada' type='HTML' version='2' visible='true'>
+          <b:widget-settings>
+            <b:widget-setting name='content'><![CDATA[]]></b:widget-setting>
+          </b:widget-settings>
+          <b:includable id='main' var='this'>
+            <div class='widget-content'>
+              <a class='feature-hero' href='#' id='feature-hero'>
+                <span aria-hidden='true' class='feature-hero-image' id='feature-hero-image'>
+                  <span class='feature-hero-placeholder'>Viento Sur</span>
+                </span>
+                <span aria-hidden='true' class='feature-hero-shade'></span>
+                <div class='feature-hero-content'>
+                  <span class='feature-hero-category' id='feature-hero-category' style='display:none'></span>
+                  <h1 class='feature-hero-title' id='feature-hero-title'>Cargando noticia destacada…</h1>
+                  <p class='feature-hero-snippet' id='feature-hero-snippet'></p>
+                  <div class='feature-hero-meta'>
+                    <span class='feature-hero-author' id='feature-hero-author'></span>
+                    <time class='feature-hero-date' id='feature-hero-date' datetime=''>
+                      <svg aria-hidden='true' class='feature-hero-clock' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10'></circle><path d='M12 6v6l4 2'></path></svg>
+                      <span class='feature-hero-relative'></span>
+                    </time>
+                  </div>
+                </div>
+              </a>
+            </div>
+          </b:includable>
+        </b:widget>
+        <b:widget id='HTML3' locked='false' title='Noticias recientes' type='HTML' version='2' visible='true'>
+          <b:widget-settings>
+            <b:widget-setting name='content'><![CDATA[]]></b:widget-setting>
+          </b:widget-settings>
+          <b:includable id='main' var='this'>
+            <div class='widget-content'>
+              <ul class='feature-side-list' id='feature-side-list'>
+                <li class='most-read-empty'>Cargando noticias recientes…</li>
+              </ul>
+            </div>
+          </b:includable>
+        </b:widget>
+      </b:section>
+    </b:if>
+
+    <div class='content-grid' id='main-content'>
+      <main class='main-column'>
+        <h2 class='section-heading'>Últimas noticias</h2>
+        <b:section class='main-area' id='main' name='Entradas' showaddelement='no'>
+          <b:widget id='Blog1' locked='true' title='Entradas del blog' type='Blog' version='2' visible='true'>
+            <b:includable id='main' var='this'><b:include name='super.main' /></b:includable>
+            <b:includable id='post' var='post'>
+              <b:if cond='data:view.isSingleItem'>
+                <b:include data='post' name='super.post' />
+              <b:else />
+                <article class='post-card'>
+                  <a class='post-card-image' expr:href='data:post.url'>
+                    <b:if cond='data:post.firstImageUrl'>
+                      <img expr:alt='data:post.title' expr:src='data:post.firstImageUrl' loading='lazy' />
+                    <b:else />
+                      <span class='post-card-placeholder'>Viento Sur</span>
+                    </b:if>
+                    <b:loop values='data:post.labels' var='label'>
+                      <b:if cond='data:label.isLast'>
+                        <span class='post-card-category'><data:label.name /></span>
+                      </b:if>
+                    </b:loop>
+                  </a>
+                  <div class='post-card-content'>
+                    <h3 class='post-card-title'><a expr:href='data:post.url'><data:post.title /></a></h3>
+                    <p class='post-card-snippet'><data:post.snippet /></p>
+                    <div class='post-card-footer'>
+                      <span class='post-card-author'><data:post.author.name /></span>
+                      <span class='post-card-date'><data:post.timestamp /></span>
+                    </div>
+                  </div>
+                </article>
+              </b:if>
+            </b:includable>
+          </b:widget>
+        </b:section>
+      </main>
+      <aside aria-label='Más noticias' class='sidebar'>
+        <b:section id='sidebar' name='Barra lateral' showaddelement='yes'>
+          <b:widget id='HTML2' locked='false' title='Lo más leído' type='HTML' version='2' visible='true'>
+            <b:widget-settings>
+              <b:widget-setting name='content'><![CDATA[]]></b:widget-setting>
+            </b:widget-settings>
+            <b:includable id='main' var='this'>
+              <h2 class='most-read-heading'><span aria-hidden='true' class='most-read-icon'>↗</span><data:title /></h2>
+              <div class='widget-content'>
+                <ol class='most-read-list' id='most-read-list'><li class='most-read-empty'>Cargando las últimas entradas…</li></ol>
+              </div>
+            </b:includable>
+          </b:widget>
+          <b:widget id='HTML1' locked='false' title='El Boletín del Sur' type='HTML' version='2' visible='true'>
+            <b:widget-settings>
+              <b:widget-setting name='content'><![CDATA[<p>Recibe cada mañana un resumen de las noticias más importantes, directamente en tu correo.</p><a class="newsletter-mail" href="mailto:radiolibrevientosur@gmail.com?subject=Suscripcion%20al%20Boletin%20del%20Sur">Solicitar suscripción</a><p class="newsletter-note">Sin spam. Cancela cuando quieras.</p>]]></b:widget-setting>
+            </b:widget-settings>
+            <b:includable id='main' var='this'>
+              <b:if cond='data:title != &quot;&quot;'><h2 class='title'><data:title /></h2></b:if>
+              <div class='widget-content'><data:content /></div>
+            </b:includable>
+          </b:widget>
+        </b:section>
+      </aside>
+    </div>
+
+    <nav aria-label='Explorar categorías' class='quick-categories'>
+      <a href='/search/label/Pol%C3%ADtica'>Política</a>
+      <a href='/search/label/Tecnolog%C3%ADa'>Tecnología</a>
+      <a href='/search/label/Deportes'>Deportes</a>
+      <a href='/search/label/Econom%C3%ADa'>Economía</a>
+      <a href='/search/label/Cultura'>Cultura</a>
+      <a href='/search/label/Medio%20Ambiente'>Medio Ambiente</a>
+      <a href='/search/label/Opini%C3%B3n'>Opinión</a>
+    </nav>
+  </div>
+
+  <footer class='site-footer'>
+    <div class='wrap'>
+      <div class='footer-grid'>
+        <div>
+          <a class='footer-brand' expr:href='data:blog.homepageUrl'>Viento Sur</a>
+          <nav aria-label='Redes sociales' class='footer-social'>
+            <a href='https://www.facebook.com/radiolibrevientosur' rel='noopener noreferrer' target='_blank'>Facebook</a>
+            <a href='https://www.instagram.com/vientosur885' rel='noopener noreferrer' target='_blank'>Instagram</a>
+            <a href='https://www.tiktok.com/@radiolibrevientosur' rel='noopener noreferrer' target='_blank'>TikTok</a>
+            <a href='https://www.youtube.com/@radiolibrevientosur9211' rel='noopener noreferrer' target='_blank'>YouTube</a>
+            <a href='https://t.me/radiolibrevientosur' rel='noopener noreferrer' target='_blank'>Telegram</a>
+          </nav>
+        </div>
+        <div>
+          <h2 class='footer-heading'>Secciones</h2>
+          <ul class='footer-list'>
+            <li><a expr:href='data:blog.homepageUrl'>Portada</a></li>
+            <li><a href='/search/label/Pol%C3%ADtica'>Política</a></li>
+            <li><a href='/search/label/Tecnolog%C3%ADa'>Tecnología</a></li>
+            <li><a href='/search/label/Deportes'>Deportes</a></li>
+            <li><a href='/search/label/Econom%C3%ADa'>Economía</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2 class='footer-heading'>Información</h2>
+          <ul class='footer-list'>
+            <li><a href='mailto:radiolibrevientosur@gmail.com'>Contacto</a></li>
+            <li><a href='mailto:radiolibrevientosur@gmail.com?subject=Sobre%20Viento%20Sur'>Sobre nosotros</a></li>
+            <li><a href='mailto:radiolibrevientosur@gmail.com?subject=Equipo%20editorial'>Equipo editorial</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2 class='footer-heading'>El Boletín del Sur</h2>
+          <p class='footer-copy'>Las noticias que importan, cada mañana en tu correo.</p>
+          <a class='footer-subscribe' href='mailto:radiolibrevientosur@gmail.com?subject=Suscripcion%20al%20Boletin%20del%20Sur'>Solicitar suscripción</a>
+        </div>
+      </div>
+      <p class='copyright'>© <data:blog.title />. Todos los derechos reservados.</p>
+    </div>
+  </footer>
+</body>
+</html>

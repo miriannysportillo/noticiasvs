@@ -28,6 +28,14 @@ type AuthorFormData = {
   socialLinks: string;
 };
 
+type RegisterFormData = {
+  email: string;
+  password: string;
+  fullName: string;
+  authorName: string;
+  role: 'admin' | 'editor';
+};
+
 type NewsletterSubscriber = {
   id: string;
   email: string;
@@ -108,12 +116,12 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [showRegister, setShowRegister] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
-  const [registerForm, setRegisterForm] = useState({
+  const [registerForm, setRegisterForm] = useState<RegisterFormData>({
     email: '',
     password: '',
     fullName: '',
     authorName: '',
-    role: 'editor' as 'editor',
+    role: 'editor',
   });
   const [showAuthorForm, setShowAuthorForm] = useState(false);
   const [editingAuthorId, setEditingAuthorId] = useState<string | null>(null);
@@ -123,10 +131,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [articleSort, setArticleSort] = useState<'recent' | 'views'>('recent');
   const [articleQuery, setArticleQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
-  const [adminUsers, setAdminUsers] = useState<Array<{ id: string; email: string; role: string; full_name: string; author_name: string }>>([]);
-  const [userManagementBusy, setUserManagementBusy] = useState(false);
-  const [userManagementMessage, setUserManagementMessage] = useState<string | null>(null);
-  const [userActionEmail, setUserActionEmail] = useState<string | null>(null);
+  const [adminNotice, setAdminNotice] = useState<string | null>(null);
   const [newsletterSubscribers, setNewsletterSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [newsletterStatusFilter, setNewsletterStatusFilter] = useState<'all' | 'active' | 'unsubscribed'>('active');
   const [newsletterLoading, setNewsletterLoading] = useState(false);
@@ -160,18 +165,6 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     setAuthors((data as Author[] | null) ?? []);
   };
 
-  const fetchAdminUsers = async () => {
-    if (!canManageAll) {
-      setAdminUsers([]);
-      return;
-    }
-
-    const { data, error } = await supabase.rpc('list_admin_users');
-    if (!error) {
-      setAdminUsers((data as Array<{ id: string; email: string; role: string; full_name: string; author_name: string }> | null) ?? []);
-    }
-  };
-
   const fetchNewsletterSubscribers = async () => {
     if (!canManageAll) {
       setNewsletterSubscribers([]);
@@ -194,7 +187,6 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       if (data.session) {
         fetchArticles();
         fetchAuthors();
-        fetchAdminUsers();
         fetchNewsletterSubscribers();
       }
     });
@@ -204,7 +196,6 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       if (nextSession) {
         fetchArticles();
         fetchAuthors();
-        fetchAdminUsers();
         fetchNewsletterSubscribers();
       }
       else setArticles([]);
@@ -243,7 +234,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       return;
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: cleanedEmail,
       password: registerForm.password,
       options: {
@@ -256,9 +247,36 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     });
 
     if (error) {
-      setAuthError(error.message || 'No se pudo crear la cuenta.');
+      const errorMessage = error.message.toLowerCase();
+      setAuthError(errorMessage.includes('email') && errorMessage.includes('rate limit')
+        ? 'Supabase alcanzó el límite de correos de confirmación. Espera antes de volver a intentarlo; si continúa, configura SMTP personalizado en Supabase Auth.'
+        : error.message || 'No se pudo crear la cuenta.');
       setRegistering(false);
       return;
+    }
+
+    if (data.session && session) {
+      const { error: restoreError } = await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      });
+      if (restoreError) {
+        setAuthError('La cuenta se creó, pero no se pudo restaurar tu sesión. Vuelve a iniciar sesión como administrador.');
+        setRegistering(false);
+        return;
+      }
+    }
+
+    if (registerForm.role === 'admin') {
+      const { error: roleError } = await supabase.rpc('set_user_role', {
+        target_email: cleanedEmail,
+        target_role: 'admin',
+      });
+      if (roleError) {
+        setAuthError(`La cuenta se creó como editor, pero no se pudo asignar el rol de administrador: ${roleError.message}`);
+        setRegistering(false);
+        return;
+      }
     }
 
     const initials = cleanedAuthorName
@@ -280,7 +298,10 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       { onConflict: 'name' }
     );
 
-    setRegisterSuccess('Cuenta creada correctamente. Revisa tu correo para confirmar la cuenta.');
+    const roleLabel = registerForm.role === 'admin' ? 'administrador' : 'editor';
+    const successMessage = `Cuenta de ${roleLabel} creada. Revisa el correo para confirmar la cuenta.`;
+    setRegisterSuccess(successMessage);
+    setAdminNotice(successMessage);
     setRegisterForm({
       email: '',
       password: '',
@@ -537,65 +558,6 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     }
   };
 
-  const handleUserRoleChange = async (email: string, nextRole: 'admin' | 'editor') => {
-    if (!canManageAll || email === session?.user?.email) {
-      if (email === session?.user?.email) {
-        setUserManagementMessage('No puedes cambiar tu propio rol desde este panel.');
-      }
-      return;
-    }
-
-    const roleLabel = nextRole === 'admin' ? 'administrador' : 'editor';
-    if (!confirm(`¿Cambiar el rol de ${email} a ${roleLabel}?`)) {
-      return;
-    }
-
-    setUserManagementMessage(null);
-    setUserActionEmail(email);
-    setUserManagementBusy(true);
-    const { error } = await supabase.rpc('set_user_role', {
-      target_email: email,
-      target_role: nextRole,
-    });
-    setUserManagementBusy(false);
-    setUserActionEmail(null);
-
-    if (error) {
-      setUserManagementMessage(error.message || 'No se pudo cambiar el rol del usuario.');
-      return;
-    }
-
-    await fetchAdminUsers();
-    setUserManagementMessage(`El usuario ${email} ahora es ${roleLabel}.`);
-  };
-
-  const handleDeleteEditor = async (email: string) => {
-    if (!canManageAll) {
-      return;
-    }
-
-    if (!confirm(`¿Seguro que quieres eliminar al usuario ${email}?`)) {
-      return;
-    }
-
-    setUserManagementMessage(null);
-    setUserActionEmail(email);
-    setUserManagementBusy(true);
-    const { error } = await supabase.rpc('delete_user_by_email', {
-      target_email: email,
-    });
-    setUserManagementBusy(false);
-    setUserActionEmail(null);
-
-    if (error) {
-      setUserManagementMessage(error.message || 'No se pudo eliminar al usuario.');
-      return;
-    }
-
-    await fetchAdminUsers();
-    setUserManagementMessage(`El usuario ${email} fue eliminado.`);
-  };
-
   const handleNewsletterStatusChange = async (subscriber: NewsletterSubscriber) => {
     const nextStatus = subscriber.status === 'active' ? 'unsubscribed' : 'active';
     const action = nextStatus === 'active' ? 'reactivar' : 'dar de baja';
@@ -729,7 +691,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     <div className="min-h-screen bg-stone-50">
       {/* Admin header */}
       <div className="bg-stone-900 text-white">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
@@ -738,9 +700,9 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             >
               <ArrowLeft size={20} />
             </button>
-            <h1 className="font-serif text-xl font-bold">Panel de Administración</h1>
+            <h1 className="font-serif text-lg sm:text-xl font-bold">Panel de Administración</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <span className="hidden sm:inline text-xs text-stone-400 mr-2">{session.user.email}</span>
             <span className={`hidden sm:inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${canManageAll ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
               {canManageAll ? 'Admin' : 'Editor'}
@@ -799,7 +761,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-6">
         {loading ? (
           <div className="flex items-center justify-center py-32">
             <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
@@ -830,23 +792,23 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 <p className="mt-1 text-2xl font-bold text-stone-900">{articles.reduce((total, article) => total + (article.views ?? 0), 0).toLocaleString('es-ES')}</p>
               </div>
             </div>
-            <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-stone-500">Gestiona el contenido editorial</p>
-              <div className="flex items-center gap-2">
-                <label className="relative hidden sm:block">
+              <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center">
+                <label className="relative block sm:w-48">
                   <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                   <input
                     value={articleQuery}
                     onChange={(event) => setArticleQuery(event.target.value)}
                     placeholder="Buscar noticias"
-                    className="w-48 pl-9 pr-3 py-2 bg-white border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
                     aria-label="Buscar noticias"
                   />
                 </label>
                 <select
                   value={statusFilter}
                   onChange={(event) => setStatusFilter(event.target.value as 'all' | 'published' | 'draft')}
-                  className="px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                  className="w-full sm:w-auto px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
                   aria-label="Filtrar por estado"
                 >
                   <option value="all">Todos</option>
@@ -856,7 +818,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 <select
                   value={articleSort}
                   onChange={(event) => setArticleSort(event.target.value as 'recent' | 'views')}
-                  className="px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
+                  className="w-full sm:w-auto px-3 py-2 bg-white border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
                   aria-label="Ordenar noticias"
                 >
                   <option value="recent">Recientes</option>
@@ -864,16 +826,6 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 </select>
               </div>
             </div>
-            <label className="relative block sm:hidden mb-4">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-              <input
-                value={articleQuery}
-                onChange={(event) => setArticleQuery(event.target.value)}
-                placeholder="Buscar noticias"
-                className="w-full pl-9 pr-3 py-2 bg-white border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
-                aria-label="Buscar noticias"
-              />
-            </label>
             {(canManageAll ? authors : authors.filter((author) => author.name === currentAuthorName)).length > 0 && (
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
@@ -899,57 +851,9 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 </div>
               </div>
             )}
-            {canManageAll && (
-              <div className="mb-6 rounded-2xl border border-stone-200 bg-white p-4">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <h2 className="font-serif text-lg font-bold text-stone-900">Usuarios del sitio</h2>
-                  <span className="text-xs text-stone-500">Administra roles y accesos</span>
-                </div>
-                {userManagementBusy && (
-                  <div className="mb-3 text-xs text-amber-700">Actualizando permisos de {userActionEmail}…</div>
-                )}
-                {userManagementMessage && (
-                  <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                    {userManagementMessage}
-                  </div>
-                )}
-                <div className="space-y-3">
-                  {adminUsers.length === 0 ? (
-                    <p className="text-sm text-stone-500">No hay usuarios para gestionar.</p>
-                  ) : adminUsers.map((user) => (
-                    <div key={user.id} className="flex flex-col gap-3 border border-stone-200 rounded-xl p-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <p className="font-medium text-stone-900 truncate">{user.full_name || user.author_name || user.email}</p>
-                        <p className="text-xs text-stone-500 truncate">{user.email}</p>
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mt-1">{user.role}</p>
-                      </div>
-                      <div className="flex items-center gap-2 self-end sm:self-center">
-                        {user.email === session.user.email ? (
-                          <span className="text-xs text-stone-400">Sesión actual</span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleUserRoleChange(user.email, user.role === 'admin' ? 'editor' : 'admin')}
-                            disabled={userManagementBusy}
-                            className={`px-2.5 py-1.5 rounded-lg border text-sm disabled:opacity-50 ${user.role === 'admin'
-                              ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
-                              : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`}
-                          >
-                            {user.role === 'admin' ? 'Dejar como editor' : 'Nombrar administrador'}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteEditor(user.email)}
-                          disabled={userManagementBusy || user.email === session.user.email}
-                          className="px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm hover:bg-red-100"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            {adminNotice && (
+              <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800" role="status">
+                {adminNotice}
               </div>
             )}
 
@@ -1073,7 +977,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                     <img src={article.image_url} alt={article.title} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">
                         {article.category}
                       </span>
@@ -1104,13 +1008,16 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                     >
                       <Pencil size={18} />
                     </button>
-                    <button
-                      onClick={() => handleDelete(article)}
-                      className="p-2 text-stone-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      aria-label="Borrar"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    {canManageAll && (
+                      <button
+                        onClick={() => handleDelete(article)}
+                        className="p-2 text-stone-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        aria-label="Borrar"
+                        title="Borrar noticia"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1297,7 +1204,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200">
               <div>
                 <h2 className="font-serif text-lg font-bold text-stone-900">Crear usuario editorial</h2>
-                <p className="text-xs text-stone-500 mt-1">Los nuevos usuarios se crean como editores.</p>
+                <p className="text-xs text-stone-500 mt-1">Elige el rol inicial de la cuenta.</p>
               </div>
               <button
                 onClick={() => setShowRegister(false)}
@@ -1353,8 +1260,19 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                   />
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Rol de usuario</label>
+                <select
+                  value={registerForm.role}
+                  onChange={(event) => setRegisterForm((current) => ({ ...current, role: event.target.value as RegisterFormData['role'] }))}
+                  className="w-full px-3 py-2.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500 bg-white"
+                >
+                  <option value="editor">Editor</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                El usuario se registra como editor. Puedes cambiar su rol desde “Usuarios del sitio”.
+                La asignación de administrador requiere permisos de administrador activos.
               </div>
               <div className="flex justify-end gap-3 pt-2 border-t border-stone-200">
                 <button
@@ -1370,7 +1288,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                   className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
                 >
                   {registering && <Loader2 size={16} className="animate-spin" />}
-                  Crear editor
+                  Crear {registerForm.role === 'admin' ? 'administrador' : 'editor'}
                 </button>
               </div>
             </form>
